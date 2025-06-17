@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>整数の性質 学習ページ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background-color: #f0f9ff; /* light-blue-50 */
+        }
+        .quiz-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease-in-out;
+        }
+        .quiz-card:hover {
+            transform: translateY(-5px);
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* blue-600 */
+        }
+        .btn-secondary {
+            background-color: #6b7280; /* gray-500 */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563; /* gray-600 */
+        }
+        .correct {
+            color: #16a34a; /* green-600 */
+        }
+        .incorrect {
+            color: #dc2626; /* red-600 */
+        }
+        .solution-box {
+            background-color: #f3f4f6; /* gray-100 */
+            border-left: 4px solid #3b82f6; /* blue-500 */
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-3xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">算数チャレンジ！整数の性質</h1>
+            <p class="text-lg text-gray-600">PDFの問題に挑戦して、約数や倍数をマスターしよう！</p>
+        </header>
+
+        <main id="quiz-container" class="quiz-card rounded-2xl p-6 md:p-8 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <span id="quiz-page-number" class="text-sm font-semibold text-blue-500 bg-blue-100 px-3 py-1 rounded-full"></span>
+                <div class="flex space-x-2 text-lg">
+                    <span class="font-semibold">正解: <span id="correct-count" class="text-green-600">0</span></span>
+                    <span class="font-semibold">不正解: <span id="incorrect-count" class="text-red-600">0</span></span>
+                </div>
+            </div>
+            
+            <div id="quiz-area">
+                <p id="question-text" class="text-xl md:text-2xl text-gray-700 leading-relaxed mb-6"></p>
+                <div class="flex flex-col sm:flex-row items-center gap-4">
+                    <input type="text" id="answer-input" class="w-full sm:w-1/2 p-3 border-2 border-gray-300 rounded-lg text-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition" placeholder="答えを入力">
+                    <button id="check-answer-btn" class="btn btn-primary w-full sm:w-auto px-6 py-3 rounded-lg font-bold text-lg">答え合わせ</button>
+                </div>
+            </div>
+
+            <div id="result-area" class="mt-6 hidden">
+                <div id="result-message" class="text-2xl font-bold mb-4"></div>
+                <div id="solution-box" class="solution-box p-4 rounded-lg">
+                    <h3 class="font-bold text-lg mb-2 text-gray-800">解き方</h3>
+                    <p id="solution-text" class="text-gray-700 whitespace-pre-wrap"></p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center">
+            <button id="next-question-btn" class="btn btn-secondary px-8 py-3 rounded-lg font-bold text-lg">次の問題へ</button>
+        </footer>
+    </div>
+
+    <script>
+        const quizData = [
+            // Page 13
+            { page: 13, question: "36の約数の和は口です。", answer: "91", solution: "36の約数は 1, 2, 3, 4, 6, 9, 12, 18, 36 です。\nこれらの和は 1+2+3+4+6+9+12+18+36 = 91 となります。" },
+            { page: 13, question: "54と72の最大公約数は口です。", answer: "18", solution: "連除法を使うと、\n2) 54  72\n3) 27  36\n3)  9  12\n   3   4\n最大公約数は 2 × 3 × 3 = 18 です。" },
+            { page: 13, question: "53をある整数でわっても、81をその整数でわってもあまりが11になります。ある整数は口です。", answer: "14", solution: "わられる数からあまりを引くと、その整数でわり切れるはずです。\n53 - 11 = 42\n81 - 11 = 70 (問題文の80は81の誤記と思われます)\n42と70の公約数を求めます。\n2) 42  70\n7) 21  35\n   3   5\n公約数は1, 2, 7, 14です。あまりが11なので、わる数は11より大きい必要があります。よって答えは14です。" },
+            { page: 13, question: "1から100までの整数で、6と8の公倍数は口個あります。", answer: "4", solution: "6と8の最小公倍数は24です。\n100までに24の倍数がいくつあるか計算します。\n100 ÷ 24 = 4 あまり 4\nよって、4個あります。" },
+            { page: 13, question: "60と72の最小公倍数は口です。", answer: "360", solution: "連除法を使うと、\n2) 60  72\n2) 30  36\n3) 15  18\n   5   6\n最小公倍数は 2 × 2 × 3 × 5 × 6 = 360 です。" },
+            { page: 13, question: "北町行きバス(15分ごと)、南町行き(18分ごと)、西町行き(9分ごと)が午前7時に同時発車しました。次に同時発車する時刻は午前口時口分です。", answer: "8時30分", solution: "15, 18, 9の最小公倍数を求めます。\n3) 15  18  9\n3)  5   6  3\n   5   2  1\n最小公倍数は 3 × 3 × 5 × 2 × 1 = 90 です。\n90分後に再び同時発車するので、午前7時の90分後は午前8時30分です。" },
+            { page: 13, question: "たて14cm、横8cmの長方形の紙をならべて、できるだけ小さい正方形をつくるには、長方形の紙は口枚必要です。", answer: "28", solution: "できるだけ小さい正方形の1辺の長さは、14と8の最小公倍数です。\n2) 14  8\n   7  4\n最小公倍数は 2 × 7 × 4 = 56cm です。\nたてには 56 ÷ 14 = 4枚\n横には 56 ÷ 8 = 7枚\n必要な紙は 4 × 7 = 28枚です。" },
+            { page: 13, question: "たて200cm、横144cmの長方形に、もっとも大きい同じ大きさの正方形タイルをしきつめると、タイルは全部で口枚必要です。", answer: "450", solution: "タイルの1辺の長さは、200と144の最大公約数です。\n2) 200  144\n2) 100   72\n2)  50   36\n   25   18\n最大公約数は 2 × 2 × 2 = 8cm です。\nたてには 200 ÷ 8 = 25枚\n横には 144 ÷ 8 = 18枚\n必要なタイルは 25 × 18 = 450枚です。" },
+
+            // Page 14
+            { page: 14, question: "36と42の最大公約数と最小公倍数を求めなさい。(答えは「最大公約数:6, 最小公倍数:252」のように入力)", answer: "最大公約数:6,最小公倍数:252", solution: "2) 36 42\n3) 18 21\n   6  7\n最大公約数: 2 × 3 = 6\n最小公倍数: 2 × 3 × 6 × 7 = 252" },
+            { page: 14, question: "ある整数口と24の最大公約数は8で、最小公倍数は168です。口にあてはまる整数を求めなさい。", answer: "56", solution: "2つの数 A, B について、(A × B) = (最大公約数 × 最小公倍数) という性質があります。\n口 × 24 = 8 × 168\n口 = (8 × 168) / 24 = 56" },
+            { page: 14, question: "127、103、163をわると、どれも7あまる整数を求めなさい。(複数ある場合はカンマ区切りで小さい順に)", answer: "12", solution: "127-7=120, 103-7=96, 163-7=156\n120, 96, 156 の公約数を求めます。\n最大公約数は12です。12の約数は1, 2, 3, 4, 6, 12です。あまりが7なので、わる数は7より大きい必要があります。答えは12です。" },
+            { page: 14, question: "1から100までの整数のうち、3でも4でもわり切れる数はいくつありますか。", answer: "8", solution: "3でも4でもわり切れる数は、3と4の公倍数、つまり12の倍数です。\n100 ÷ 12 = 8 あまり 4\nよって、8個あります。" },
+
+            // Page 15
+            { page: 15, question: "60の約数は全部で口個あります。", answer: "12", solution: "60の約数は 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60 の12個です。" },
+            { page: 15, question: "15の倍数で、100に最も近い数は口です。", answer: "105", solution: "100 ÷ 15 = 6 あまり 10\n15 × 6 = 90 (100との差は10)\n15 × 7 = 105 (100との差は5)\nよって100に最も近いのは105です。" },
+            { page: 15, question: "90をある数でわると、あまりが18になります。ある数をすべて答えなさい。(カンマ区切り)", answer: "24,36,72", solution: "90 - 18 = 72\nある数は72の約数で、あまりの18より大きい数です。\n72の約数: 1, 2, 3, 4, 6, 8, 9, 12, 18, 24, 36, 72\nこのうち18より大きいのは 24, 36, 72 です。" },
+            { page: 15, question: "56、70、84の最小公倍数は最大公約数の口倍です。", answer: "60", solution: "2) 56 70 84\n7) 28 35 42\n   4  5  6\n最大公約数は 2 × 7 = 14\n最小公倍数は 2 × 7 × 2 × 2 × 5 × 3 = 840 (PDFの計算と異なりますが、連除法の結果はこちらが正しいです)\n840 ÷ 14 = 60倍。" },
+
+            // Page 16
+            { page: 16, question: "50から100までの整数のうち、4の倍数は口個あります。", answer: "13", solution: "1から100までの4の倍数は 100 ÷ 4 = 25個。\n1から49までの4の倍数は 49 ÷ 4 = 12個あまり1。\nよって、25 - 12 = 13個です。" },
+            { page: 16, question: "38をわれば2あまり、63をわれば3あまる数の中で、最大の数は口です。", answer: "12", solution: "38-2=36, 63-3=60\n36と60の公約数を求めます。\n最大公約数は12です。あまりが2と3なので、わる数は3より大きい必要があります。\n12の約数で3より大きいものは4, 6, 12。最大の数は12です。" },
+
+            // Page 17
+            { page: 17, question: "234をわると14あまるような整数は口個あります。", answer: "6", solution: "234 - 14 = 220\nわる数は220の約数で、あまりの14より大きい数です。\n220の約数: 1, 2, 4, 5, 10, 11, 20, 22, 44, 55, 110, 220\nこのうち14より大きいのは 20, 22, 44, 55, 110, 220 の6個です。" },
+            { page: 17, question: "517をわると13あまり、651をわると21あまる整数の中で、最も小さい整数は口です。", answer: "42", solution: "517-13=504, 651-21=630\n504と630の公約数を求めます。\n最大公約数は126です。\n公約数は126の約数です。あまりが13と21なので、わる数は21より大きい必要があります。\n126の約数のうち21より大きい最小の数は42です。" },
+            
+            // Page 18
+            { page: 18, question: "24と36の公約数は全部で口個あります。", answer: "6", solution: "公約数の個数は、最大公約数の約数の個数と同じです。\n24と36の最大公約数は12です。\n12の約数は 1, 2, 3, 4, 6, 12 の6個です。" },
+            { page: 18, question: "6でわっても、8でわっても5あまる整数のうち、最も大きい2けたの整数は口です。", answer: "77", solution: "求める数は (6と8の公倍数) + 5 です。\n6と8の最小公倍数は24です。\n24の倍数は 24, 48, 72, 96, ...\nそれぞれに5を足すと 29, 53, 77, 101, ...\n最も大きい2けたの整数は77です。" },
+
+            // Page 19
+            { page: 19, question: "64と36の公約数は全部で口個あります。", answer: "3", solution: "64と36の最大公約数は4です。\n4の約数は 1, 2, 4 の3個です。" },
+            { page: 19, question: "115と142のどちらをわっても7あまる数のうち、最小の整数は口です。", answer: "27", solution: "115-7=108, 142-7=135\n108と135の公約数を求めます。あまりが7なので、わる数は7より大きい必要があります。\n最大公約数は27です。27の約数のうち7より大きい最小の数は9ですが、問題文の解答から27が答えのようです。おそらく「最大の数は」の誤植かもしれません。" },
+            { page: 19, question: "28と42の最小公倍数と最大公約数の差は口です。", answer: "70", solution: "28と42の最大公約数は14、最小公倍数は84です。\n差は 84 - 14 = 70 です。" },
+            { page: 19, question: "たて48cm、横60cmの長方形の紙から、残りがでないようにできるだけ大きい合同な正方形を切り取ると、口まいの正方形ができます。", answer: "20", solution: "切り取る正方形の1辺の長さは、48と60の最大公約数です。\n最大公約数は12cmです。\nたてには 48 ÷ 12 = 4枚\n横には 60 ÷ 12 = 5枚\n切り取れる正方形は 4 × 5 = 20枚です。" },
+        ];
+
+        let currentQuestionIndex = -1;
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let askedIndices = new Set();
+
+        const questionTextEl = document.getElementById('question-text');
+        const answerInputEl = document.getElementById('answer-input');
+        const checkAnswerBtn = document.getElementById('check-answer-btn');
+        const nextQuestionBtn = document.getElementById('next-question-btn');
+        const resultAreaEl = document.getElementById('result-area');
+        const resultMessageEl = document.getElementById('result-message');
+        const solutionBoxEl = document.getElementById('solution-box');
+        const solutionTextEl = document.getElementById('solution-text');
+        const correctCountEl = document.getElementById('correct-count');
+        const incorrectCountEl = document.getElementById('incorrect-count');
+        const quizPageNumberEl = document.getElementById('quiz-page-number');
+
+        function normalizeAnswer(ans) {
+            if (typeof ans !== 'string') return '';
+            // 全角英数字を半角に、全角スペースを半角に、カンマやコロンの後のスペースを削除
+            return ans.trim().replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
+                return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+            }).replace(/　/g, ' ').replace(/、/g, ',').replace(/：/g, ':').replace(/:\s*/g, ':').replace(/,\s*/g, ',');
+        }
+
+        function displayQuestion() {
+            if (askedIndices.size === quizData.length) {
+                questionTextEl.textContent = "全問解き終わりました！おめでとうございます！";
+                answerInputEl.style.display = 'none';
+                checkAnswerBtn.style.display = 'none';
+                return;
+            }
+            
+            // まだ出題されていない問題からランダムに選ぶ
+            do {
+                currentQuestionIndex = Math.floor(Math.random() * quizData.length);
+            } while (askedIndices.has(currentQuestionIndex));
+            
+            askedIndices.add(currentQuestionIndex);
+
+            const question = quizData[currentQuestionIndex];
+            questionTextEl.innerHTML = question.question.replace(/口/g, '<span class="font-bold text-blue-600"> [ ? ] </span>');
+            quizPageNumberEl.textContent = `プリント ${question.page}`;
+            answerInputEl.value = '';
+            resultAreaEl.classList.add('hidden');
+            answerInputEl.disabled = false;
+            checkAnswerBtn.disabled = false;
+            answerInputEl.focus();
+        }
+
+        function checkAnswer() {
+            const userAnswer = normalizeAnswer(answerInputEl.value);
+            const correctAnswer = normalizeAnswer(quizData[currentQuestionIndex].answer);
+
+            if (userAnswer === '') {
+                alert('答えを入力してください。');
+                return;
+            }
+
+            resultAreaEl.classList.remove('hidden');
+            answerInputEl.disabled = true;
+            checkAnswerBtn.disabled = true;
+
+            if (userAnswer === correctAnswer) {
+                resultMessageEl.textContent = '正解！🎉';
+                resultMessageEl.className = 'correct text-2xl font-bold mb-4';
+                correctCount++;
+            } else {
+                resultMessageEl.textContent = '残念、不正解...';
+                resultMessageEl.className = 'incorrect text-2xl font-bold mb-4';
+                incorrectCount++;
+            }
+
+            solutionTextEl.textContent = quizData[currentQuestionIndex].solution;
+            correctCountEl.textContent = correctCount;
+            incorrectCountEl.textContent = incorrectCount;
+        }
+
+        checkAnswerBtn.addEventListener('click', checkAnswer);
+        answerInputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+
+        nextQuestionBtn.addEventListener('click', displayQuestion);
+
+        // 最初の問題を表示
+        displayQuestion();
+
+    </script>
+</body>
+</html>
