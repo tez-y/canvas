@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本の伝統工芸品フラッシュカード</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Interフォントを適用 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+        /* フラッシュカードのフリップアニメーション */
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+        }
+
+        .flashcard.flipped .flashcard-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flashcard-front, .flashcard-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden; /* Safari */
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+        }
+
+        .flashcard-front {
+            background-color: #ffffff; /* bg-white */
+            color: #1f2937; /* text-gray-800 */
+            padding: 1rem; /* p-4 */
+        }
+
+        .flashcard-back {
+            background-color: #3b82f6; /* bg-blue-500 */
+            color: #ffffff; /* text-white */
+            transform: rotateY(180deg);
+            padding: 1rem; /* p-4 */
+        }
+
+        /* 画像がなくなったため、フロントコンテンツの垂直方向のセンタリングを強調 */
+        .flashcard-front h2 {
+            margin: 0; /* デフォルトのマージンをリセット */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-8 px-4">
+    <header class="w-full max-w-4xl mb-8 text-center">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-4">日本の伝統工芸品</h1>
+        <p class="text-lg text-gray-700">クリックして都道府県名を見てみよう！</p>
+    </header>
+
+    <main id="flashcard-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full max-w-6xl">
+        <!-- フラッシュカードはJavaScriptでここに動的に追加されます -->
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const traditionalCrafts = [
+                { name: "二風谷アットゥㇱ", prefecture: "北海道" },
+                { name: "二風谷イタ", prefecture: "北海道" },
+                { name: "津軽塗", prefecture: "青森県" },
+                { name: "岩谷堂箪笥", prefecture: "岩手県" },
+                { name: "浄法寺塗", prefecture: "岩手県" },
+                { name: "南部鉄器", prefecture: "岩手県" },
+                { name: "秀衡塗", prefecture: "岩手県" },
+                { name: "雄勝硯", prefecture: "宮城県" },
+                { name: "仙台箪笥", prefecture: "宮城県" },
+                { name: "鳴子漆器", prefecture: "宮城県" },
+                { name: "宮城伝統こけし", prefecture: "宮城県" },
+                { name: "秋田杉桶樽", prefecture: "秋田県" },
+                { name: "大館曲げわっぱ", prefecture: "秋田県" },
+                { name: "樺細工", prefecture: "秋田県" },
+                { name: "川連漆器", prefecture: "秋田県" },
+                { name: "羽越しな布", prefecture: "山形県" },
+                { name: "置賜紬", prefecture: "山形県" },
+                { name: "天童将棋駒", prefecture: "山形県" },
+                { name: "山形鋳物", prefecture: "山形県" },
+                { name: "山形仏壇", prefecture: "山形県" },
+                { name: "会津塗", prefecture: "福島県" },
+                { name: "会津本郷焼", prefecture: "福島県" },
+                { name: "大堀相馬焼", prefecture: "福島県" },
+                { name: "奥会津編み組細工", prefecture: "福島県" },
+                { name: "奥会津昭和からむし織", prefecture: "福島県" },
+                { name: "笠間焼", prefecture: "茨城県" },
+                { name: "真壁石燈籠", prefecture: "茨城県" },
+                { name: "結城紬", prefecture: "茨城県" },
+                { name: "益子焼", prefecture: "栃木県" },
+                { name: "伊勢崎絣", prefecture: "群馬県" },
+                { name: "桐生織", prefecture: "群馬県" },
+                { name: "岩槻人形", prefecture: "埼玉県" },
+                { name: "江戸木目込人形", prefecture: "埼玉県" },
+                { name: "春日部桐箪笥", prefecture: "埼玉県" },
+                { name: "行田足袋", prefecture: "埼玉県" },
+                { name: "秩父銘仙", prefecture: "埼玉県" },
+                { name: "千葉工匠具", prefecture: "千葉県" },
+                { name: "房州うちわ", prefecture: "千葉県" },
+                { name: "江戸押絵", prefecture: "東京都" },
+                { name: "江戸からかみ", prefecture: "東京都" },
+                { name: "江戸硝子", prefecture: "東京都" },
+                { name: "江戸切子", prefecture: "東京都" },
+                { name: "江戸指物", prefecture: "東京都" },
+                { name: "江戸節句人形", prefecture: "東京都" },
+                { name: "江戸表具", prefecture: "東京都" },
+                { name: "江戸べっ甲", prefecture: "東京都" },
+                { name: "江戸木版画", prefecture: "東京都" },
+                { name: "江戸和竿", prefecture: "東京都" },
+                { name: "多摩織", prefecture: "東京都" },
+                { name: "東京アンチモニー工芸品", prefecture: "東京都" },
+                { name: "東京銀器", prefecture: "東京都" },
+                { name: "東京琴", prefecture: "東京都" },
+                { name: "東京三味線", prefecture: "東京都" },
+                { name: "東京染小紋", prefecture: "東京都" },
+                { name: "東京手描友禅", prefecture: "東京都" },
+                { name: "東京本染注染", prefecture: "東京都" },
+                { name: "東京無地染", prefecture: "東京都" },
+                { name: "本場黄八丈", prefecture: "東京都" },
+                { name: "村山大島紬", prefecture: "東京都" },
+                { name: "小田原漆器", prefecture: "神奈川県" },
+                { name: "鎌倉彫", prefecture: "神奈川県" },
+                { name: "箱根寄木細工", prefecture: "神奈川県" },
+                { name: "越後三条打刃物", prefecture: "新潟県" },
+                { name: "越後与板打刃物", prefecture: "新潟県" },
+                { name: "小千谷縮", prefecture: "新潟県" },
+                { name: "小千谷紬", prefecture: "新潟県" },
+                { name: "加茂桐箪笥", prefecture: "新潟県" },
+                { name: "佐渡無名異焼", prefecture: "新潟県" },
+                { name: "三条仏壇", prefecture: "新潟県" },
+                { name: "塩沢紬", prefecture: "新潟県" },
+                { name: "燕鎚起銅器", prefecture: "新潟県" },
+                { name: "十日町明石ちぢみ", prefecture: "新潟県" },
+                { name: "十日町絣", prefecture: "新潟県" },
+                { name: "長岡仏壇", prefecture: "新潟県" },
+                { name: "新潟漆器", prefecture: "新潟県" },
+                { name: "新潟・白根仏壇", prefecture: "新潟県" },
+                { name: "本塩沢", prefecture: "新潟県" },
+                { name: "村上木彫堆朱", prefecture: "新潟県" },
+                { name: "甲州印伝", prefecture: "山梨県" },
+                { name: "甲州水晶貴石細工", prefecture: "山梨県" },
+                { name: "甲州手彫印章", prefecture: "山梨県" },
+                { name: "飯山仏壇", prefecture: "長野県" },
+                { name: "内山紙", prefecture: "長野県" },
+                { name: "木曽漆器", prefecture: "長野県" },
+                { name: "信州打刃物", prefecture: "長野県" },
+                { name: "信州紬", prefecture: "長野県" },
+                { name: "南木曽ろくろ細工", prefecture: "長野県" },
+                { name: "松本家具", prefecture: "長野県" },
+                { name: "井波彫刻", prefecture: "富山県" },
+                { name: "越中福岡の菅笠", prefecture: "富山県" },
+                { name: "越中和紙", prefecture: "富山県" },
+                { name: "庄川挽物木地", prefecture: "富山県" },
+                { name: "高岡漆器", prefecture: "富山県" },
+                { name: "高岡銅器", prefecture: "富山県" },
+                { name: "牛首紬", prefecture: "石川県" },
+                { name: "加賀繍", prefecture: "石川県" },
+                { name: "加賀友禅", prefecture: "石川県" },
+                { name: "金沢漆器", prefecture: "石川県" },
+                { name: "金沢箔", prefecture: "石川県" },
+                { name: "金沢仏壇", prefecture: "石川県" },
+                { name: "九谷焼", prefecture: "石川県" },
+                { name: "七尾仏壇", prefecture: "石川県" },
+                { name: "山中漆器", prefecture: "石川県" },
+                { name: "輪島塗", prefecture: "石川県" },
+                { name: "越前打刃物", prefecture: "福井県" },
+                { name: "越前漆器", prefecture: "福井県" },
+                { name: "越前箪笥", prefecture: "福井県" },
+                { name: "越前焼", prefecture: "福井県" },
+                { name: "越前和紙", prefecture: "福井県" },
+                { name: "若狭塗", prefecture: "福井県" },
+                { name: "若狭めのう細工", prefecture: "福井県" },
+                { name: "一位一刀彫", prefecture: "岐阜県" },
+                { name: "岐阜提灯", prefecture: "岐阜県" },
+                { name: "岐阜和傘", prefecture: "岐阜県" },
+                { name: "飛騨春慶", prefecture: "岐阜県" },
+                { name: "美濃焼", prefecture: "岐阜県" },
+                { name: "美濃和紙", prefecture: "岐阜県" },
+                { name: "駿河竹千筋細工", prefecture: "静岡県" },
+                { name: "駿河雛具", prefecture: "静岡県" },
+                { name: "駿河雛人形", prefecture: "静岡県" },
+                { name: "赤津焼", prefecture: "愛知県" },
+                { name: "有松絞・鳴海絞", prefecture: "愛知県" },
+                { name: "岡崎石工品", prefecture: "愛知県" },
+                { name: "尾張七宝", prefecture: "愛知県" },
+                { name: "尾張仏具", prefecture: "愛知県" },
+                { name: "三州鬼瓦工芸品", prefecture: "愛知県" },
+                { name: "瀬戸染付焼", prefecture: "愛知県" },
+                { name: "常滑焼", prefecture: "愛知県" },
+                { name: "豊橋筆", prefecture: "愛知県" },
+                { name: "名古屋桐箪笥", prefecture: "愛知県" },
+                { name: "名古屋黒紋付染", prefecture: "愛知県" },
+                { name: "名古屋節句飾", prefecture: "愛知県" },
+                { name: "名古屋仏壇", prefecture: "愛知県" },
+                { name: "名古屋友禅", prefecture: "愛知県" },
+                { name: "三河仏壇", prefecture: "愛知県" },
+                { name: "伊賀くみひも", prefecture: "三重県" },
+                { name: "伊賀焼", prefecture: "三重県" },
+                { name: "伊勢形紙", prefecture: "三重県" },
+                { name: "鈴鹿墨", prefecture: "三重県" },
+                { name: "四日市萬古焼", prefecture: "三重県" },
+                { name: "近江上布", prefecture: "滋賀県" },
+                { name: "信楽焼", prefecture: "滋賀県" },
+                { name: "彦根仏壇", prefecture: "滋賀県" },
+                { name: "京石工芸品", prefecture: "京都府" },
+                { name: "京うちわ", prefecture: "京都府" },
+                { name: "京鹿の子絞", prefecture: "京都府" },
+                { name: "京くみひも", prefecture: "京都府" },
+                { name: "京黒紋付染", prefecture: "京都府" },
+                { name: "京小紋", prefecture: "京都府" },
+                { name: "京指物", prefecture: "京都府" },
+                { name: "京漆器", prefecture: "京都府" },
+                { name: "京扇子", prefecture: "京都府" },
+                { name: "京人形", prefecture: "京都府" },
+                { name: "京繍", prefecture: "京都府" },
+                { name: "京表具", prefecture: "京都府" },
+                { name: "京仏具", prefecture: "京都府" },
+                { name: "京仏壇", prefecture: "京都府" },
+                { name: "京焼・清水焼", prefecture: "京都府" },
+                { name: "京友禅", prefecture: "京都府" },
+                { name: "西陣織", prefecture: "京都府" },
+                { name: "いずみガラス", prefecture: "大阪府" },
+                { name: "大阪唐木指物", prefecture: "大阪府" },
+                { name: "大阪金剛簾", prefecture: "大阪府" },
+                { name: "大阪泉州桐箪笥", prefecture: "大阪府" },
+                { name: "大阪浪華錫器", prefecture: "大阪府" },
+                { name: "大阪仏壇", prefecture: "大阪府" },
+                { name: "大阪欄間", prefecture: "大阪府" },
+                { name: "堺打刃物", prefecture: "大阪府" },
+                { name: "浪華本染め", prefecture: "大阪府" },
+                { name: "出石焼", prefecture: "兵庫県" },
+                { name: "丹波立杭焼", prefecture: "兵庫県" },
+                { name: "豊岡杞柳細工", prefecture: "兵庫県" },
+                { name: "播州毛鉤", prefecture: "兵庫県" },
+                { name: "播州そろばん", prefecture: "兵庫県" },
+                { name: "播州三木打刃物", prefecture: "兵庫県" },
+                { name: "高山茶筎", prefecture: "奈良県" },
+                { name: "奈良墨", prefecture: "奈良県" },
+                { name: "奈良筆", prefecture: "奈良県" },
+                { name: "紀州漆器", prefecture: "和歌山県" },
+                { name: "紀州箪笥", prefecture: "和歌山県" },
+                { name: "紀州へら竿", prefecture: "和歌山県" },
+                { name: "因州和紙", prefecture: "鳥取県" },
+                { name: "弓浜絣", prefecture: "鳥取県" },
+                { name: "出雲石燈ろう", prefecture: "島根県" },
+                { name: "石見焼", prefecture: "島根県" },
+                { name: "雲州そろばん", prefecture: "島根県" },
+                { name: "石州和紙", prefecture: "島根県" },
+                { name: "勝山竹細工", prefecture: "岡山県" },
+                { name: "備前焼", prefecture: "岡山県" },
+                { name: "川尻筆", prefecture: "広島県" },
+                { name: "熊野筆", prefecture: "広島県" },
+                { name: "広島仏壇", prefecture: "広島県" },
+                { name: "福山琴", prefecture: "広島県" },
+                { name: "宮島細工", prefecture: "広島県" },
+                { name: "赤間硯", prefecture: "山口県" },
+                { name: "大内塗", prefecture: "山口県" },
+                { name: "萩焼", prefecture: "山口県" },
+                { name: "阿波正藍しじら織", prefecture: "徳島県" },
+                { name: "阿波和紙", prefecture: "徳島県" },
+                { name: "大谷焼", prefecture: "徳島県" },
+                { name: "香川漆器", prefecture: "香川県" },
+                { name: "丸亀うちわ", prefecture: "香川県" },
+                { name: "大洲和紙", prefecture: "愛媛県" },
+                { name: "砥部焼", prefecture: "愛媛県" },
+                { name: "土佐打刃物", prefecture: "高知県" },
+                { name: "土佐和紙", prefecture: "高知県" },
+                { name: "上野焼", prefecture: "福岡県" },
+                { name: "久留米絣", prefecture: "福岡県" },
+                { name: "小石原焼", prefecture: "福岡県" },
+                { name: "博多織", prefecture: "福岡県" },
+                { name: "博多人形", prefecture: "福岡県" },
+                { name: "八女提灯", prefecture: "福岡県" },
+                { name: "八女福島仏壇", prefecture: "福岡県" },
+                { name: "伊万里焼・有田焼", prefecture: "佐賀県" },
+                { name: "唐津焼", prefecture: "佐賀県" },
+                { name: "長崎べっ甲", prefecture: "長崎県" },
+                { name: "波佐見焼", prefecture: "長崎県" },
+                { name: "三川内焼", prefecture: "長崎県" },
+                { name: "天草陶磁器", prefecture: "熊本県" },
+                { name: "小代焼", prefecture: "熊本県" },
+                { name: "肥後象がん", prefecture: "熊本県" },
+                { name: "山鹿灯籠", prefecture: "熊本県" },
+                { name: "別府竹細工", prefecture: "大分県" },
+                { name: "都城大弓", prefecture: "宮崎県" },
+                { name: "川辺仏壇", prefecture: "鹿児島県" },
+                { name: "薩摩焼", prefecture: "鹿児島県" },
+                { name: "本場大島紬", prefecture: "鹿児島県" },
+                { name: "喜如嘉の芭蕉布", prefecture: "沖縄県" },
+                { name: "久米島紬", prefecture: "沖縄県" },
+                { name: "三線", prefecture: "沖縄県" },
+                { name: "首里織", prefecture: "沖縄県" },
+                { name: "知花花織", prefecture: "沖縄県" },
+                { name: "壺屋焼", prefecture: "沖縄県" },
+                { name: "南風原花織", prefecture: "沖縄県" },
+                { name: "宮古上布", prefecture: "沖縄県" },
+                { name: "八重山上布", prefecture: "沖縄県" },
+                { name: "八重山ミンサー", prefecture: "沖縄県" },
+                { name: "読谷山ミンサー", prefecture: "沖縄県" },
+                { name: "与那国織", prefecture: "沖縄県" },
+                { name: "読谷山花織", prefecture: "沖縄県" },
+                { name: "琉球絣", prefecture: "沖縄県" },
+                { name: "琉球漆器", prefecture: "沖縄県" },
+                { name: "琉球びんがた", prefecture: "沖縄県" }
+            ];
+
+            // Fisher-Yates (Knuth) シャッフルアルゴリズム
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]]; // 要素をスワップ
+                }
+            }
+
+            // フラッシュカードデータをシャッフル
+            shuffleArray(traditionalCrafts);
+
+            const container = document.getElementById('flashcard-container');
+
+            traditionalCrafts.forEach(craft => {
+                const card = document.createElement('div');
+                // Tailwind CSS classes for card container
+                card.className = 'flashcard perspective-1000 w-full h-64 md:h-72 cursor-pointer';
+
+                card.innerHTML = `
+                    <div class="flashcard-inner">
+                        <div class="flashcard-front">
+                            <h2 class="text-xl font-semibold text-center">${craft.name}</h2>
+                        </div>
+                        <div class="flashcard-back">
+                            <p class="text-2xl font-bold text-center">${craft.prefecture}</p>
+                        </div>
+                    </div>
+                `;
+
+                // カードがクリックされたときにフリップする処理
+                card.addEventListener('click', () => {
+                    card.classList.toggle('flipped');
+                });
+
+                container.appendChild(card);
+            });
+        });
+    </script>
+</body>
+</html>
