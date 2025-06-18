@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数直線メーカー</title>
+    <!-- Tailwind CSSのCDNを読み込む -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Interフォントを適用 */
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #f0f4f8; /* ライトグレーの背景色 */
+        }
+        /* キャンバスの基本的なスタイル */
+        canvas {
+            display: block;
+            background-color: #ffffff; /* 白い背景 */
+            border-radius: 0.75rem; /* 角丸 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* 影 */
+            margin: auto; /* 中央寄せ */
+            max-width: 100%; /* レスポンシブ対応 */
+            height: auto; /* 高さ自動調整 */
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">数直線メーカー</h1>
+
+        <div class="mb-4">
+            <label for="startNumber" class="block text-sm font-medium text-gray-700 mb-2">開始番号:</label>
+            <input type="number" id="startNumber" value="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <div class="mb-4">
+            <label for="endNumber" class="block text-sm font-medium text-gray-700 mb-2">終了番号:</label>
+            <input type="number" id="endNumber" value="10" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <div class="mb-4">
+            <label for="tickInterval" class="block text-sm font-medium text-gray-700 mb-2">目盛りの間隔:</label>
+            <input type="number" id="tickInterval" value="1" step="any" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <div class="mb-6">
+            <label for="labelInterval" class="block text-sm font-medium text-gray-700 mb-2">表示数字の間隔 (例: 50ごと):</label>
+            <input type="number" id="labelInterval" value="1" step="any" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <button id="generateButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+            数直線を作成
+        </button>
+
+        <div id="messageBox" class="mt-4 text-center text-red-600 font-semibold hidden"></div>
+    </div>
+
+    <div class="mt-8 w-full max-w-4xl">
+        <canvas id="numberLineCanvas" width="800" height="150"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('numberLineCanvas');
+        const ctx = canvas.getContext('2d');
+        const startNumberInput = document.getElementById('startNumber');
+        const endNumberInput = document.getElementById('endNumber');
+        const tickIntervalInput = document.getElementById('tickInterval');
+        const labelIntervalInput = document.getElementById('labelInterval');
+        const generateButton = document.getElementById('generateButton');
+        const messageBox = document.getElementById('messageBox');
+
+        // DPIスケーリングを適用して、ぼやけをなくす
+        const applyDPIScaling = () => {
+            const dpi = window.devicePixelRatio;
+            const style_width = getComputedStyle(canvas).getPropertyValue('width').slice(0, -2);
+            const style_height = getComputedStyle(canvas).getPropertyValue('height').slice(0, -2);
+            canvas.setAttribute('width', style_width * dpi);
+            canvas.setAttribute('height', style_height * dpi);
+            ctx.scale(dpi, dpi);
+        };
+
+        // 数直線を描画する関数
+        const drawNumberLine = () => {
+            // エラーメッセージを非表示にする
+            messageBox.classList.add('hidden');
+            messageBox.textContent = '';
+
+            let start = parseFloat(startNumberInput.value);
+            let end = parseFloat(endNumberInput.value);
+            let tickInterval = parseFloat(tickIntervalInput.value);
+            let labelInterval = parseFloat(labelIntervalInput.value);
+
+            // 入力値のバリデーション
+            if (isNaN(start) || isNaN(end) || isNaN(tickInterval) || isNaN(labelInterval)) {
+                messageBox.textContent = '有効な数字を入力してください。';
+                messageBox.classList.remove('hidden');
+                return;
+            }
+            if (start >= end) {
+                messageBox.textContent = '開始番号は終了番号より小さくしてください。';
+                messageBox.classList.remove('hidden');
+                return;
+            }
+            if (tickInterval <= 0) {
+                messageBox.textContent = '目盛りの間隔は正の数を入力してください。';
+                messageBox.classList.remove('hidden');
+                return;
+            }
+            if (labelInterval <= 0) {
+                messageBox.textContent = '表示数字の間隔は正の数を入力してください。';
+                messageBox.classList.remove('hidden');
+                return;
+            }
+            if (tickInterval > end - start) {
+                messageBox.textContent = '目盛りの間隔は範囲より小さくしてください。';
+                messageBox.classList.remove('hidden');
+                return;
+            }
+            // 浮動小数点数の比較のため、小さな許容誤差を使用
+            if (labelInterval < tickInterval && Math.abs(labelInterval % tickInterval) > 1e-9) {
+                messageBox.textContent = '表示数字の間隔は、目盛りの間隔の倍数であるか、それ以上である必要があります。';
+                messageBox.classList.remove('hidden');
+                return;
+            }
+
+
+            // DPIスケーリングを適用
+            applyDPIScaling();
+
+            // キャンバスをクリア
+            ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+            const margin = 40; // 左右の余白
+            const lineY = height / 2; // 数直線を描画するY座標
+
+            // 数直線を描画 (矢印なし)
+            ctx.beginPath();
+            ctx.moveTo(margin, lineY);
+            ctx.lineTo(width - margin, lineY);
+            ctx.strokeStyle = '#333'; // 濃い灰色
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 目盛りの描画
+            const range = end - start;
+
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = '#333';
+
+            for (let i = start; i <= end; i = parseFloat((i + tickInterval).toFixed(10))) { // 浮動小数点誤差対策
+                const x = margin + ((i - start) / range) * (width - 2 * margin);
+                const tickHeight = 10; // 目盛りの長さ
+
+                ctx.beginPath();
+                ctx.moveTo(x, lineY - tickHeight / 2);
+                ctx.lineTo(x, lineY + tickHeight / 2);
+                ctx.strokeStyle = '#666'; // 中間の灰色
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // ラベルの描画
+                // startからlabelIntervalの倍数になる位置、またはstart/endの位置にラベルを表示
+                // 浮動小数点数の比較のため、小さな許容誤差を使用
+                const isLabelPoint = (Math.abs((i - start) % labelInterval) < 1e-9) || i === start || i === end;
+                if (isLabelPoint) {
+                    // toFixedを使用して、tickIntervalの小数点以下の桁数に合わせて表示
+                    const decimalPlaces = Math.max(
+                        String(tickInterval).includes('.') ? String(tickInterval).split('.')[1].length : 0,
+                        String(labelInterval).includes('.') ? String(labelInterval).split('.')[1].length : 0
+                    );
+                    ctx.fillText(i.toFixed(decimalPlaces), x, lineY + tickHeight / 2 + 5);
+                }
+            }
+        };
+
+        // ボタンがクリックされたときに数直線を描画
+        generateButton.addEventListener('click', drawNumberLine);
+
+        // ウィンドウのリサイズ時にも数直線を描画し直す
+        window.addEventListener('resize', drawNumberLine);
+
+        // ページロード時に一度描画
+        window.onload = drawNumberLine;
+    </script>
+</body>
+</html>
