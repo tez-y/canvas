@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メトロノーム＆ピアノ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the app */
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Prevent scrolling */
+        }
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 1rem;
+            box-sizing: border-box;
+            background-color: #f8f8f8;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* shadow-md */
+        }
+
+        /* Metronome styles */
+        #metronome-section {
+            flex: 1; /* Takes half height */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06); /* inner shadow */
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        #bpm-display {
+            font-size: 4rem; /* text-7xl */
+            font-weight: bold; /* font-extrabold */
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .bpm-button {
+            background-color: #a78bfa; /* violet-400 */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .bpm-button:hover {
+            background-color: #8b5cf6; /* violet-500 */
+            transform: translateY(-2px);
+        }
+        .bpm-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        #time-signature-buttons button {
+            background-color: #818cf8; /* indigo-400 */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #time-signature-buttons button:hover {
+            background-color: #6366f1; /* indigo-500 */
+        }
+        #time-signature-buttons button.active {
+            background-color: #4f46e5; /* indigo-600 */
+            font-weight: bold;
+        }
+
+
+        #beat-indicator-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .beat-dot {
+            width: 1.5rem;
+            height: 1.5rem;
+            background-color: #e5e7eb; /* gray-200 */
+            border-radius: 50%;
+            transition: background-color 0.1s;
+        }
+
+        .beat-dot.active {
+            background-color: #10b981; /* emerald-500 */
+        }
+
+        #start-stop-button {
+            margin-top: 1.5rem;
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.75rem; /* rounded-xl */
+            font-size: 1.75rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        #start-stop-button.active {
+            background-color: #ef4444; /* red-500 */
+        }
+        #start-stop-button:hover {
+            background-color: #2563eb; /* blue-600 */
+            transform: translateY(-2px);
+        }
+        #start-stop-button.active:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+        #start-stop-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        /* Piano styles */
+        #piano-section {
+            flex: 1; /* Takes half height */
+            position: relative;
+            background-color: #1a202c; /* gray-900 */
+            border-radius: 0.75rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2); /* inner shadow */
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            /* Changed from flex-end to flex-start for vertical inversion */
+            align-items: flex-start; /* Align keys to the top */
+            margin-top: 0.5rem;
+            /* Removed overflow-x: auto; for no scrolling */
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        }
+
+        .white-key, .black-key {
+            position: absolute;
+            /* Changed from bottom to top for vertical inversion */
+            top: 1rem; /* Adjust to align with top padding */
+            border-radius: 0.25rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.1s, transform 0.05s;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; /* Labels at the bottom of the key */
+            font-size: 0.75rem; /* text-xs */
+            color: #4b5563; /* gray-600 */
+            padding-bottom: 0.25rem;
+        }
+
+        .white-key {
+            /* Width and height will be set by JavaScript */
+            background-color: #ffffff;
+            border: 1px solid #d1d5db; /* gray-300 */
+            z-index: 10;
+        }
+
+        .white-key.active {
+            background-color: #bfdbfe; /* blue-200 */
+            transform: translateY(2px);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .black-key {
+            /* Width and height will be set by JavaScript */
+            background-color: #000000;
+            border: 1px solid #1f2937; /* gray-800 */
+            z-index: 20;
+            color: #d1d5db; /* gray-300 */
+            padding-bottom: 0.5rem;
+        }
+
+        .black-key.active {
+            background-color: #4b5563; /* gray-700 */
+            transform: translateY(2px);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Piano keys container will be dynamically sized by JS */
+        .piano-keys-container {
+            position: relative; /* Needed for absolute positioning of keys */
+            height: 100%;
+            width: 100%; /* Ensure it takes full width */
+        }
+
+        /* Media queries for responsiveness (base sizes are now handled by JS) */
+        @media (max-width: 768px) {
+            #bpm-display {
+                font-size: 3rem; /* text-6xl for smaller screens */
+            }
+            .bpm-button {
+                padding: 0.5rem 1rem;
+                font-size: 1.25rem;
+            }
+            #start-stop-button {
+                padding: 0.75rem 1.5rem;
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Metronome Section -->
+        <section id="metronome-section">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-4">メトロノーム</h2>
+            <div id="bpm-display">120</div>
+            <div class="flex space-x-4 mb-4">
+                <button id="bpm-decrease" class="bpm-button">-</button>
+                <button id="bpm-increase" class="bpm-button">+</button>
+            </div>
+            <div id="time-signature-buttons" class="flex space-x-2 mb-4">
+                <button data-beats="2" class="active">2/4</button>
+                <button data-beats="3">3/4</button>
+                <button data-beats="4">4/4</button>
+                <button data-beats="6">6/8</button>
+            </div>
+            <div id="beat-indicator-container" class="flex">
+                <!-- Beat dots will be dynamically generated -->
+            </div>
+            <button id="start-stop-button">スタート</button>
+        </section>
+
+        <!-- Piano Section -->
+        <section id="piano-section">
+            <h2 class="text-2xl font-semibold text-gray-200 absolute top-4 left-1/2 -translate-x-1/2">ピアノ</h2>
+            <div class="piano-keys-container">
+                <!-- Keys will be dynamically generated here by JavaScript -->
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Metronome Logic
+        let bpm = 120;
+        let isPlaying = false;
+        let metronomeInterval;
+        let beatCount = 0;
+        let beatsPerMeasure = 4; // Default to 4 beats per measure
+        const beatIndicatorContainer = document.getElementById('beat-indicator-container');
+        const bpmDisplay = document.getElementById('bpm-display');
+        const startStopButton = document.getElementById('start-stop-button');
+        const bpmIncreaseButton = document.getElementById('bpm-increase');
+        const bpmDecreaseButton = document.getElementById('bpm-decrease');
+        const timeSignatureButtons = document.querySelectorAll('#time-signature-buttons button');
+
+        // Audio Context for Metronome and Piano
+        let audioContext;
+
+        function initializeAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // Metronome Sound
+        function playMetronomeSound() {
+            initializeAudioContext();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.type = 'sine'; // Can be 'sine', 'square', 'sawtooth', 'triangle'
+            // Higher pitch for first beat (beatCount 0)
+            oscillator.frequency.setValueAtTime(beatCount === 0 ? 880 : 440, audioContext.currentTime);
+
+            gainNode.gain.setValueAtTime(0.5, audioContext.currentTime); // Volume
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.05); // Quick fade out
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.05);
+        }
+
+        // Update BPM
+        function updateBPM(newBPM) {
+            if (newBPM >= 40 && newBPM <= 240) { // Limit BPM range
+                bpm = newBPM;
+                bpmDisplay.textContent = bpm;
+                if (isPlaying) {
+                    clearInterval(metronomeInterval);
+                    startMetronome();
+                }
+            }
+        }
+
+        // Update Beat Indicators
+        function updateBeatIndicators() {
+            beatIndicatorContainer.innerHTML = ''; // Clear existing dots
+            for (let i = 0; i < beatsPerMeasure; i++) {
+                const dot = document.createElement('div');
+                dot.classList.add('beat-dot');
+                dot.dataset.beat = i + 1;
+                beatIndicatorContainer.appendChild(dot);
+            }
+        }
+
+        // Set Time Signature
+        function setTimeSignature(beats) {
+            beatsPerMeasure = parseInt(beats);
+            beatCount = 0; // Reset beat count
+            updateBeatIndicators();
+            // Update active button styling
+            timeSignatureButtons.forEach(button => {
+                if (parseInt(button.dataset.beats) === beatsPerMeasure) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+            if (isPlaying) {
+                clearInterval(metronomeInterval);
+                startMetronome();
+            }
+        }
+
+        // Start Metronome
+        function startMetronome() {
+            if (!isPlaying) {
+                isPlaying = true;
+                startStopButton.textContent = 'ストップ';
+                startStopButton.classList.add('active');
+                beatCount = -1; // Reset beat count for the first beat
+                playBeat(); // Play first beat immediately
+                metronomeInterval = setInterval(playBeat, (60 / bpm) * 1000);
+            }
+        }
+
+        // Stop Metronome
+        function stopMetronome() {
+            if (isPlaying) {
+                isPlaying = false;
+                startStopButton.textContent = 'スタート';
+                startStopButton.classList.remove('active');
+                clearInterval(metronomeInterval);
+                const beatDots = document.querySelectorAll('.beat-dot');
+                beatDots.forEach(dot => dot.classList.remove('active'));
+            }
+        }
+
+        // Play Beat
+        function playBeat() {
+            beatCount = (beatCount + 1) % beatsPerMeasure; // Cycle through beats per measure
+
+            // Visual indicator
+            const beatDots = document.querySelectorAll('.beat-dot');
+            beatDots.forEach((dot, index) => {
+                if (index === beatCount) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+
+            playMetronomeSound();
+        }
+
+        // Metronome Event Listeners
+        bpmIncreaseButton.addEventListener('click', () => updateBPM(bpm + 5));
+        bpmDecreaseButton.addEventListener('click', () => updateBPM(bpm - 5));
+        startStopButton.addEventListener('click', () => {
+            if (isPlaying) {
+                stopMetronome();
+            } else {
+                startMetronome();
+            }
+        });
+
+        timeSignatureButtons.forEach(button => {
+            button.addEventListener('click', () => setTimeSignature(button.dataset.beats));
+        });
+
+        // Initialize beat indicators on load
+        window.addEventListener('load', updateBeatIndicators);
+
+        // Piano Logic
+        const pianoKeysContainer = document.querySelector('.piano-keys-container');
+
+        // Function to calculate MIDI note number from note name (e.g., 'C4', 'A#3')
+        function getMidiNoteNumber(noteName) {
+            const noteMap = { 'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11 };
+            const notePart = noteName.match(/[A-G]#?/)[0];
+            const octavePart = parseInt(noteName.match(/\d+/)[0]);
+            
+            // MIDI note 0 is C-1. So C0 is MIDI 12.
+            // MIDI note number = (octave + 1) * 12 + semitone value (0-11)
+            return noteMap[notePart] + (octavePart + 1) * 12;
+        }
+
+        // Function to get frequency from MIDI note number
+        function midiToFrequency(midiNote) {
+            // A4 (440 Hz) is MIDI note 69
+            return 440 * Math.pow(2, (midiNote - 69) / 12);
+        }
+
+        // Data for 88 keys of a standard piano (A0 to C8)
+        const allPianoKeys = [];
+        const noteNamesStandard = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const whiteKeySemitoneIndices = new Set([0, 2, 4, 5, 7, 9, 11]); // C, D, E, F, G, A, B
+
+        // Populate allPianoKeys from C0 (MIDI 12) to C8 (MIDI 108)
+        for (let midi = 12; midi <= 108; midi++) { // C0 to C8
+            const octave = Math.floor(midi / 12) - 1; // Octave relative to C-1
+            const semitoneIndex = midi % 12;
+            const noteName = noteNamesStandard[semitoneIndex];
+            const fullNoteName = noteName + octave;
+            const isWhite = whiteKeySemitoneIndices.has(semitoneIndex);
+
+            // Filter for standard 88-key piano range: A0 (MIDI 21) to C8 (MIDI 108)
+            if (midi >= 21 && midi <= 108) {
+                allPianoKeys.push({
+                    name: fullNoteName,
+                    midi: midi,
+                    isWhite: isWhite,
+                    semitoneIndex: semitoneIndex
+                });
+            }
+        }
+
+        const activeOscillators = {}; // Stores active oscillators by identifier (e.g., touch.identifier or key element)
+
+        function playNote(midiNote, identifier, keyElement) {
+            initializeAudioContext();
+            if (activeOscillators[identifier]) {
+                stopNote(identifier); // Stop any existing note for this identifier
+            }
+
+            const frequency = midiToFrequency(midiNote);
+            const masterGain = audioContext.createGain();
+            masterGain.gain.setValueAtTime(0, audioContext.currentTime); // Start from 0 volume
+
+            // Oscillator 1: Fundamental frequency (Sine wave)
+            const osc1 = audioContext.createOscillator();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            osc1.connect(masterGain);
+
+            // Oscillator 2: Octave higher (Sine wave), lower gain
+            const osc2 = audioContext.createOscillator();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(frequency * 2, audioContext.currentTime);
+            const gain2 = audioContext.createGain();
+            gain2.gain.setValueAtTime(0.3, audioContext.currentTime); // Adjust gain for harmonic
+            osc2.connect(gain2).connect(masterGain);
+
+            // Oscillator 3: Fifth (Sine wave), even lower gain, slight detune
+            const osc3 = audioContext.createOscillator();
+            osc3.type = 'sine';
+            osc3.frequency.setValueAtTime(frequency * 1.503, audioContext.currentTime); // 1.5 for fifth, slight detune
+            const gain3 = audioContext.createGain();
+            gain3.gain.setValueAtTime(0.15, audioContext.currentTime); // Adjust gain for harmonic
+            osc3.connect(gain3).connect(masterGain);
+
+            // Oscillator 4: Subtle "hammer" attack transient (Square wave at fundamental)
+            // This oscillator will have a very short attack and decay to simulate the hammer strike
+            const osc4 = audioContext.createOscillator();
+            osc4.type = 'square';
+            osc4.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            const gain4 = audioContext.createGain();
+            gain4.gain.setValueAtTime(0, audioContext.currentTime); // Start at 0 for attack
+            gain4.gain.linearRampToValueAtTime(0.4, audioContext.currentTime + 0.005); // Fast attack peak
+            gain4.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.05); // Quick decay
+            osc4.connect(gain4).connect(masterGain);
+
+
+            masterGain.connect(audioContext.destination);
+
+            // ADSR Envelope parameters
+            const now = audioContext.currentTime;
+            const attackTime = 0.008; // Very fast attack for percussive feel
+            const decayTime = 0.2;   // Quick decay from peak
+            const sustainLevel = 0.4; // Sustain at moderate volume
+
+            // Attack phase: quickly ramp up to peak volume
+            masterGain.gain.linearRampToValueAtTime(0.7, now + attackTime);
+
+            // Decay phase: drop to sustain level
+            masterGain.gain.linearRampToValueAtTime(sustainLevel, now + attackTime + decayTime);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc3.start(now);
+            osc4.start(now);
+
+            // Store all related audio nodes for proper stopping
+            activeOscillators[identifier] = {
+                oscillators: [osc1, osc2, osc3, osc4],
+                gainNode: masterGain,
+                keyElement: keyElement
+            };
+
+            // Add active class for visual feedback
+            if (keyElement) {
+                keyElement.classList.add('active');
+            }
+        }
+
+        function stopNote(identifier) {
+            if (activeOscillators[identifier]) {
+                const { oscillators, gainNode, keyElement } = activeOscillators[identifier];
+                const now = audioContext.currentTime;
+                const releaseTime = 0.3; // A bit longer release for piano-like decay
+
+                // Cancel any pending gain changes to ensure a smooth release
+                gainNode.gain.cancelScheduledValues(now);
+                // Release phase: quickly ramp down to near silent
+                gainNode.gain.linearRampToValueAtTime(0.0001, now + releaseTime);
+
+                // Stop all oscillators after the release time has passed
+                oscillators.forEach(osc => {
+                    // Stop oscillators only after the gain node has faded out
+                    // This prevents abrupt cuts if the releaseTime is long
+                    osc.stop(now + releaseTime + 0.01);
+                    osc.onended = () => {
+                        osc.disconnect();
+                    };
+                });
+                // Disconnect gain node after it fades out completely
+                gainNode.onended = () => {
+                    gainNode.disconnect();
+                };
+
+                delete activeOscillators[identifier];
+
+                // Remove active class
+                if (keyElement) {
+                    keyElement.classList.remove('active');
+                }
+            }
+        }
+
+        // Unified event handler for touch and mouse
+        function handleStart(event) {
+            event.preventDefault(); // Prevent scrolling on touch devices
+            // For touch events, process all changed touches
+            if (event.type === 'touchstart') {
+                Array.from(event.changedTouches).forEach(touch => {
+                    const touchedKey = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.white-key, .black-key');
+                    if (touchedKey && touchedKey.dataset.note) { // Ensure it's a valid key
+                        playNote(getMidiNoteNumber(touchedKey.dataset.note), touch.identifier, touchedKey);
+                    }
+                });
+            } else if (event.type === 'mousedown') {
+                // For mouse events, get the target key directly
+                const targetKey = event.target.closest('.white-key, .black-key');
+                if (targetKey) {
+                    playNote(getMidiNoteNumber(targetKey.dataset.note), 'mouse', targetKey);
+                }
+            }
+        }
+
+        function handleEnd(event) {
+            event.preventDefault();
+            // For touchend/touchcancel, iterate through changedTouches to stop active notes
+            if (event.type === 'touchend' || event.type === 'touchcancel') {
+                Array.from(event.changedTouches).forEach(touch => {
+                    stopNote(touch.identifier);
+                });
+            } else if (event.type === 'mouseup') {
+                // For mouseup, stop the note identified by 'mouse'
+                stopNote('mouse');
+            } else if (event.type === 'mouseleave' && event.buttons === 1) { // Check if mouse button is still pressed
+                // If mouse leaves the container AND the button is still pressed, stop the note
+                // This handles cases where mouse is dragged off the key while pressed
+                stopNote('mouse');
+            }
+        }
+
+        // Attach event listeners for piano keys container
+        pianoKeysContainer.addEventListener('mousedown', handleStart);
+        pianoKeysContainer.addEventListener('mouseup', handleEnd);
+        pianoKeysContainer.addEventListener('mouseleave', handleEnd); // For mouse leaving the key while pressed
+
+        pianoKeysContainer.addEventListener('touchstart', handleStart, { passive: false });
+        pianoKeysContainer.addEventListener('touchend', handleEnd);
+        pianoKeysContainer.addEventListener('touchcancel', handleEnd);
+
+
+        // Optional: Keyboard input for piano
+        const keyboardMap = {
+            'a': 'C4', 'w': 'C#4', 's': 'D4', 'e': 'D#4', 'd': 'E4', 'f': 'F4', 't': 'F#4', 'g': 'G4', 'y': 'G#4', 'h': 'A4', 'u': 'A#4', 'j': 'B4',
+            'k': 'C5', 'o': 'C#5', 'l': 'D5', 'p': 'D#5', ';': 'E5', "'": 'F5', '[': 'F#5', ']': 'G5', '\\': 'G#5',
+        };
+        const pressedKeys = new Set(); // To prevent re-triggering on keydown hold
+
+        document.addEventListener('keydown', (event) => {
+            const key = event.key.toLowerCase();
+            if (keyboardMap[key] && !pressedKeys.has(key)) {
+                const noteName = keyboardMap[key];
+                const keyElement = document.querySelector(`.white-key[data-note="${noteName}"], .black-key[data-note="${noteName}"]`);
+                if (keyElement) {
+                    playNote(getMidiNoteNumber(noteName), `keyboard-${key}`, keyElement);
+                    pressedKeys.add(key);
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            const key = event.key.toLowerCase();
+            if (keyboardMap[key] && pressedKeys.has(key)) {
+                stopNote(`keyboard-${key}`);
+                pressedKeys.delete(key);
+            }
+        });
+
+        // Function to dynamically size and position piano keys
+        function resizePianoKeys() {
+            const containerWidth = pianoKeysContainer.clientWidth;
+            const containerHeight = pianoKeysContainer.clientHeight - 2 * parseFloat(getComputedStyle(pianoKeysContainer).paddingTop);
+
+            // Changed minWhiteKeyWidth to 1.1 times its previous value (60 * 1.1 = 66)
+            const minWhiteKeyWidth = 66; // Target minimum width for a white key (px) for desktop
+            let actualWhiteKeyWidth;
+            let whiteKeysToDisplay = [];
+
+            // Filter for standard 88-key piano white keys
+            const whiteKeysOnlyFullList = allPianoKeys.filter(key => key.isWhite && key.midi >= 21 && key.midi <= 108);
+            const numTotalWhiteKeys = whiteKeysOnlyFullList.length; // Should be 52 for an 88-key piano
+
+            // Calculate how many white keys can ideally fit given the `minWhiteKeyWidth`
+            let numWhiteKeysCanFit = Math.floor(containerWidth / minWhiteKeyWidth);
+
+            // Ensure at least one octave (7 white keys) is displayed for usability
+            if (numWhiteKeysCanFit < 7) {
+                numWhiteKeysCanFit = 7;
+            }
+
+            // Cap the number of white keys to the total available (52 white keys)
+            if (numWhiteKeysCanFit > numTotalWhiteKeys) {
+                numWhiteKeysCanFit = numTotalWhiteKeys;
+            }
+
+            // Determine the actual keys to display by centering the available range
+            let startIndex;
+            if (numWhiteKeysCanFit < numTotalWhiteKeys) {
+                const centerIndex = Math.floor(whiteKeysOnlyFullList.length / 2);
+                startIndex = Math.max(0, centerIndex - Math.floor(numWhiteKeysCanFit / 2));
+                // Adjust startIndex if it would cause the end of the slice to go past the end of the full list
+                if (startIndex + numWhiteKeysCanFit > whiteKeysOnlyFullList.length) {
+                    startIndex = whiteKeysOnlyFullList.length - numWhiteKeysCanFit;
+                }
+            } else {
+                startIndex = 0; // Display all available white keys if they fit
+            }
+            
+            whiteKeysToDisplay = whiteKeysOnlyFullList.slice(startIndex, startIndex + numWhiteKeysCanFit);
+            
+            // Fallback in case `whiteKeysToDisplay` is somehow empty (e.g., very narrow screen and complex calculation)
+            if (whiteKeysToDisplay.length === 0 && numTotalWhiteKeys > 0) {
+                whiteKeysToDisplay = whiteKeysOnlyFullList.slice(0, 7); // Default to first 7 white keys
+                numWhiteKeysCanFit = 7;
+            }
+
+            actualWhiteKeyWidth = containerWidth / whiteKeysToDisplay.length;
+            const whiteKeyHeight = containerHeight * 0.8;
+            const blackKeyWidth = actualWhiteKeyWidth * 0.6;
+            const blackKeyHeight = whiteKeyHeight * 0.6;
+
+            pianoKeysContainer.innerHTML = ''; // Clear existing keys
+
+            let currentWhiteKeyOffset = 0; // Tracks the cumulative width of rendered white keys
+
+            // Create a Map to easily find the rendered white key's offset for black key positioning
+            const renderedWhiteKeyOffsets = new Map();
+
+            whiteKeysToDisplay.forEach((whiteKeyData, index) => {
+                const whiteKeyElement = document.createElement('div');
+                whiteKeyElement.classList.add('white-key');
+                whiteKeyElement.dataset.note = whiteKeyData.name;
+                whiteKeyElement.textContent = whiteKeyData.name;
+                whiteKeyElement.style.width = `${actualWhiteKeyWidth}px`;
+                whiteKeyElement.style.height = `${whiteKeyHeight}px`;
+                whiteKeyElement.style.left = `${currentWhiteKeyOffset}px`;
+                whiteKeyElement.style.top = `${1 * parseFloat(getComputedStyle(pianoKeysContainer).paddingTop)}px`;
+                pianoKeysContainer.appendChild(whiteKeyElement);
+
+                renderedWhiteKeyOffsets.set(whiteKeyData.midi, currentWhiteKeyOffset);
+
+                currentWhiteKeyOffset += actualWhiteKeyWidth;
+            });
+
+            // Now, iterate through allPianoKeys to find and render black keys that correspond to visible white keys
+            allPianoKeys.forEach(keyData => {
+                if (!keyData.isWhite) { // Process only black keys
+                    // Find the white key this black key is visually 'after' (e.g., C# is after C)
+                    // The MIDI of the preceding white key for a black key is its MIDI - 1.
+                    const precedingWhiteKeyMidi = keyData.midi - 1;
+                    
+                    // Check if this preceding white key is currently visible
+                    if (renderedWhiteKeyOffsets.has(precedingWhiteKeyMidi)) {
+                        const prevWhiteKeyOffset = renderedWhiteKeyOffsets.get(precedingWhiteKeyMidi);
+                        
+                        const blackKeyElement = document.createElement('div');
+                        blackKeyElement.classList.add('black-key');
+                        blackKeyElement.dataset.note = keyData.name;
+                        blackKeyElement.textContent = keyData.name;
+                        blackKeyElement.style.width = `${blackKeyWidth}px`;
+                        blackKeyElement.style.height = `${blackKeyHeight}px`;
+                        
+                        // Position black key over the right side of the preceding white key
+                        const leftPosition = prevWhiteKeyOffset + (actualWhiteKeyWidth - blackKeyWidth / 2) - (actualWhiteKeyWidth * 0.05); // Fine-tune offset
+                        blackKeyElement.style.left = `${leftPosition}px`;
+                        blackKeyElement.style.top = `${1 * parseFloat(getComputedStyle(pianoKeysContainer).paddingTop)}px`;
+                        pianoKeysContainer.appendChild(blackKeyElement);
+                    }
+                }
+            });
+        }
+
+        // Call resize on initial load and window resize
+        window.addEventListener('load', resizePianoKeys);
+        window.addEventListener('resize', resizePianoKeys);
+    </script>
+</body>
+</html>
