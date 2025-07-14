@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角形の面積二等分線計算ツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .label-text {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
+        <h1 class="text-2xl md:text-3xl font-bold text-center text-cyan-400 mb-6">三角形の面積二等分線 計算ツール</h1>
+        
+        <!-- 入力セクション -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-gray-700 p-4 rounded-lg">
+                <label for="base" class="block text-sm font-medium text-gray-300 mb-2">底辺 (b)</label>
+                <input type="number" id="base" value="200" class="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
+            </div>
+            <div class="bg-gray-700 p-4 rounded-lg">
+                <label for="height" class="block text-sm font-medium text-gray-300 mb-2">高さ (h)</label>
+                <input type="number" id="height" value="150" class="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
+            </div>
+        </div>
+
+        <!-- 結果表示セクション -->
+        <div class="bg-gray-900/50 p-6 rounded-xl mb-8">
+             <h2 class="text-xl font-semibold text-center mb-4">計算結果</h2>
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <p class="text-sm text-gray-400">面積を二等分する線の長さ (b')</p>
+                    <p id="divider-length" class="text-2xl font-bold text-green-400"></p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <p class="text-sm text-gray-400">底辺からの高さ (y)</p>
+                    <p id="divider-height" class="text-2xl font-bold text-yellow-400"></p>
+                </div>
+             </div>
+        </div>
+
+        <!-- キャンバス (図形描画) -->
+        <div class="bg-gray-900 rounded-lg p-4">
+            <canvas id="triangleCanvas" class="w-full h-auto"></canvas>
+        </div>
+
+    </div>
+
+    <script>
+        // DOM要素の取得
+        const baseInput = document.getElementById('base');
+        const heightInput = document.getElementById('height');
+        const dividerLengthOutput = document.getElementById('divider-length');
+        const dividerHeightOutput = document.getElementById('divider-height');
+        const canvas = document.getElementById('triangleCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // イベントリスナーの設定
+        baseInput.addEventListener('input', draw);
+        heightInput.addEventListener('input', draw);
+        window.addEventListener('resize', draw);
+
+        /**
+         * 計算と描画を統括するメイン関数
+         */
+        function draw() {
+            // 1. 入力値の取得
+            const base = parseFloat(baseInput.value) || 0;
+            const height = parseFloat(heightInput.value) || 0;
+
+            if (base <= 0 || height <= 0) {
+                // 不正な値の場合は描画をクリア
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                dividerLengthOutput.textContent = '---';
+                dividerHeightOutput.textContent = '---';
+                return;
+            }
+
+            // 2. 面積を二等分する線の計算
+            // 元の三角形と、頂点から作られる小さい三角形は相似の関係にある
+            // 面積比が 1:2 なので、辺の比（相似比）は 1:sqrt(2) となる
+            const sqrt2 = Math.sqrt(2);
+            const dividerLength = base / sqrt2; // 小さい三角形の底辺 b'
+            const topTriangleHeight = height / sqrt2; // 小さい三角形の高さ h'
+            const dividerHeightFromBase = height - topTriangleHeight; // 底辺からの高さ y
+
+            // 3. 計算結果の表示
+            dividerLengthOutput.textContent = dividerLength.toFixed(2);
+            dividerHeightOutput.textContent = dividerHeightFromBase.toFixed(2);
+
+            // 4. キャンバスへの描画
+            drawTriangleOnCanvas(base, height, dividerLength, dividerHeightFromBase);
+        }
+
+        /**
+         * キャンバスに三角形と関連情報を描画する関数
+         * @param {number} b - 元の三角形の底辺
+         * @param {number} h - 元の三角形の高さ
+         * @param {number} b_prime - 面積二等分線の長さ
+         * @param {number} y - 面積二等分線の底辺からの高さ
+         */
+        function drawTriangleOnCanvas(b, h, b_prime, y) {
+            const padding = 60;
+            const canvasWidth = canvas.clientWidth;
+            // アスペクト比を保つために高さを設定
+            canvas.width = canvasWidth;
+            canvas.height = canvasWidth * 0.75; // 4:3 の比率
+            
+            // 描画スケールの計算 (キャンバス内に収まるように)
+            const scaleX = (canvas.width - padding * 2) / b;
+            const scaleY = (canvas.height - padding * 2) / h;
+            const scale = Math.min(scaleX, scaleY);
+
+            const scaledBase = b * scale;
+            const scaledHeight = h * scale;
+            const scaledDividerLength = b_prime * scale;
+            const scaledDividerY = y * scale;
+
+            // 描画の中心座標
+            const centerX = canvas.width / 2;
+            const topY = padding;
+            const baseY = topY + scaledHeight;
+
+            // キャンバスをクリア
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // --- メインの三角形の描画 ---
+            ctx.beginPath();
+            ctx.moveTo(centerX, topY); // 頂点
+            ctx.lineTo(centerX - scaledBase / 2, baseY); // 左下の頂点
+            ctx.lineTo(centerX + scaledBase / 2, baseY); // 右下の頂点
+            ctx.closePath();
+            ctx.strokeStyle = '#60a5fa'; // 青色
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(96, 165, 250, 0.1)';
+            ctx.fill();
+
+            // --- 面積を二等分する線の描画 ---
+            ctx.beginPath();
+            const dividerYPos = baseY - scaledDividerY;
+            ctx.moveTo(centerX - scaledDividerLength / 2, dividerYPos);
+            ctx.lineTo(centerX + scaledDividerLength / 2, dividerYPos);
+            ctx.strokeStyle = '#4ade80'; // 緑色
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // --- 寸法線とテキストの描画 ---
+            ctx.font = '14px Inter';
+            ctx.fillStyle = '#cbd5e1'; // 薄いグレー
+
+            // 底辺 (b) の寸法
+            ctx.beginPath();
+            ctx.moveTo(centerX - scaledBase / 2, baseY + 10);
+            ctx.lineTo(centerX + scaledBase / 2, baseY + 10);
+            ctx.moveTo(centerX - scaledBase / 2, baseY + 5);
+            ctx.lineTo(centerX - scaledBase / 2, baseY + 15);
+            ctx.moveTo(centerX + scaledBase / 2, baseY + 5);
+            ctx.lineTo(centerX + scaledBase / 2, baseY + 15);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.textAlign = 'center';
+            ctx.fillText(`b = ${b.toFixed(1)}`, centerX, baseY + 30);
+
+            // 高さ (h) の寸法
+            const heightLineX = centerX + scaledBase / 2 + 10;
+            ctx.beginPath();
+            ctx.moveTo(heightLineX, topY);
+            ctx.lineTo(heightLineX, baseY);
+            ctx.moveTo(heightLineX - 5, topY);
+            ctx.lineTo(heightLineX + 5, topY);
+            ctx.moveTo(heightLineX - 5, baseY);
+            ctx.lineTo(heightLineX + 5, baseY);
+            ctx.stroke();
+            ctx.save();
+            ctx.translate(heightLineX + 15, (topY + baseY) / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText(`h = ${h.toFixed(1)}`, 0, 0);
+            ctx.restore();
+
+            // 二等分線の長さ (b') のテキスト
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#a7f3d0'; // 明るい緑
+            ctx.fillText(`b' = ${b_prime.toFixed(2)}`, centerX, dividerYPos - 10);
+
+            // 底辺からの高さ (y) の寸法
+            const yLineX = centerX - scaledBase / 2 - 10;
+            ctx.beginPath();
+            ctx.moveTo(yLineX, baseY);
+            ctx.lineTo(yLineX, dividerYPos);
+            ctx.moveTo(yLineX - 5, baseY);
+            ctx.lineTo(yLineX + 5, baseY);
+            ctx.moveTo(yLineX - 5, dividerYPos);
+            ctx.lineTo(yLineX + 5, dividerYPos);
+            ctx.strokeStyle = '#facc15'; // 黄色
+            ctx.stroke();
+            ctx.save();
+            ctx.translate(yLineX - 15, (baseY + dividerYPos) / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#fde047'; // 明るい黄色
+            ctx.fillText(`y = ${y.toFixed(2)}`, 0, 0);
+            ctx.restore();
+        }
+
+        // 初期描画の実行
+        window.onload = draw;
+    </script>
+</body>
+</html>
