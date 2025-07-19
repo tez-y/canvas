@@ -1,0 +1,243 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リアルタイム楽譜表示</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 32px;
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+        }
+        .button-primary {
+            background-color: #4f46e5;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+            outline: none;
+        }
+        .button-primary:hover {
+            background-color: #4338ca;
+        }
+        .button-danger {
+            background-color: #ef4444;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+            outline: none;
+        }
+        .button-danger:hover {
+            background-color: #dc2626;
+        }
+        .status-message {
+            margin-top: 24px;
+            font-size: 1.125rem; /* text-lg */
+            color: #4b5563;
+        }
+        .score-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            min-height: 200px;
+            margin-top: 32px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #6b7280;
+            font-style: italic;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">リアルタイム楽譜表示</h1>
+        <p class="text-gray-600 mb-8">マイクからの笛の音を検出して楽譜として表示します。</p>
+
+        <div class="space-x-4 mb-8">
+            <button id="startButton" class="button-primary">マイクを開始</button>
+            <button id="stopButton" class="button-danger" disabled>マイクを停止</button>
+        </div>
+
+        <p id="status" class="status-message">準備完了</p>
+
+        <div id="scoreArea" class="score-area">
+            <p>ここに楽譜が表示されます（高度な機能が必要です）</p>
+        </div>
+
+        <div id="errorMessage" class="text-red-500 mt-4 hidden"></div>
+    </div>
+
+    <script>
+        let audioContext;
+        let mediaStreamSource;
+        let analyser;
+        let animationFrameId;
+
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const statusDisplay = document.getElementById('status');
+        const scoreArea = document.getElementById('scoreArea');
+        const errorMessageDisplay = document.getElementById('errorMessage');
+
+        // エラーメッセージを表示する関数
+        function showErrorMessage(message) {
+            errorMessageDisplay.textContent = message;
+            errorMessageDisplay.classList.remove('hidden');
+        }
+
+        // エラーメッセージを非表示にする関数
+        function hideErrorMessage() {
+            errorMessageDisplay.classList.add('hidden');
+            errorMessageDisplay.textContent = '';
+        }
+
+        // マイクを開始する関数
+        async function startMicrophone() {
+            hideErrorMessage();
+            try {
+                // AudioContextを初期化または再開
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+
+                // マイクのストリームを取得
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaStreamSource = audioContext.createMediaStreamSource(stream);
+
+                // AnalyserNodeを作成（音声データを分析するため）
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048; // FFTサイズを設定（周波数分解能に影響）
+
+                // マイク入力とアナライザーを接続
+                mediaStreamSource.connect(analyser);
+
+                statusDisplay.textContent = 'マイク入力中...';
+                startButton.disabled = true;
+                stopButton.disabled = false;
+
+                // 音声処理ループを開始
+                processAudio();
+
+            } catch (err) {
+                console.error('マイクアクセスエラー:', err);
+                let userMessage = 'マイクへのアクセス中に予期せぬエラーが発生しました。'; // より一般的なメッセージ
+                if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    userMessage = 'マイクが見つかりません。物理的なマイクが接続されているか、オペレーティングシステムの設定でマイクが有効になっているか確認してください。また、この環境（ブラウザのサンドボックスなど）がマイクへのアクセスを許可しているか確認してください。';
+                } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    userMessage = 'マイクへのアクセスが拒否されました。ブラウザの設定でマイクの使用を許可してください。また、このページが安全な接続 (HTTPS) で提供されているか確認してください。';
+                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                    userMessage = 'マイクが使用中です。他のアプリケーションがマイクを使用していないか確認してください。';
+                } else if (err.name === 'OverconstrainedError') {
+                    userMessage = '指定された制約を満たすマイクが見つかりませんでした。';
+                } else if (err.name === 'SecurityError') {
+                    userMessage = 'セキュリティ上の理由によりマイクにアクセスできません。このページが安全な接続 (HTTPS) で提供されているか確認してください。';
+                }
+                showErrorMessage(userMessage);
+                statusDisplay.textContent = 'エラー';
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
+        }
+
+        // 音声データを処理するループ
+        function processAudio() {
+            // 周波数データを格納する配列
+            const bufferLength = analyser.frequencyBinCount; // fftSize / 2
+            const dataArray = new Uint8Array(bufferLength);
+
+            // アニメーションフレームごとに実行
+            animationFrameId = requestAnimationFrame(processAudio);
+
+            // 周波数データを取得
+            analyser.getByteFrequencyData(dataArray);
+
+            // ここでピッチ検出ロジックを実装
+            // 例: 最も高い周波数成分を検出する（簡易的な例であり、正確なピッチ検出ではありません）
+            let maxFrequency = 0;
+            let maxIndex = -1;
+            for (let i = 0; i < bufferLength; i++) {
+                if (dataArray[i] > maxFrequency) {
+                    maxFrequency = dataArray[i];
+                    maxIndex = i;
+                }
+            }
+
+            if (maxIndex !== -1 && maxFrequency > 0) { // 音が検出された場合
+                // サンプルレートとインデックスから周波数を計算
+                const sampleRate = audioContext.sampleRate;
+                const frequency = maxIndex * (sampleRate / analyser.fftSize);
+
+                // この周波数を音符に変換し、楽譜エリアに表示するロジックをここに実装
+                // 例: statusDisplay.textContent = `ピッチ検出: ${frequency.toFixed(2)} Hz`;
+                // 実際の楽譜表示には、音楽理論に基づいた複雑な変換と描画が必要です。
+                // 例えば、Midi.jsやTone.js、VexFlowなどのライブラリが役立つかもしれません。
+                statusDisplay.textContent = `マイク入力中... (簡易ピッチ: ${frequency.toFixed(2)} Hz)`;
+                // scoreArea.textContent = `検出された音符: ${mapFrequencyToNote(frequency)}`; // この関数は未実装
+            } else {
+                statusDisplay.textContent = 'マイク入力中... (音を待機中)';
+            }
+        }
+
+        // マイクを停止する関数
+        function stopMicrophone() {
+            if (mediaStreamSource) {
+                // ストリームのトラックを停止
+                mediaStreamSource.mediaStream.getTracks().forEach(track => track.stop());
+                mediaStreamSource.disconnect();
+                mediaStreamSource = null;
+            }
+            if (audioContext) {
+                // AudioContextを停止（完全にリソースを解放する場合）
+                // audioContext.close(); // 必要に応じて
+            }
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+
+            statusDisplay.textContent = '停止しました';
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            hideErrorMessage();
+        }
+
+        // イベントリスナー
+        startButton.addEventListener('click', startMicrophone);
+        stopButton.addEventListener('click', stopMicrophone);
+
+        // ページロード時にAudioContextの初期化を試みる
+        // ユーザーインタラクションなしでAudioContextを開始すると警告が出る場合があるため、
+        // ボタンクリック時に完全に開始するのが推奨されます。
+        // ここでは、ユーザーが最初にボタンをクリックするまでaudioContextはnullのままです。
+    </script>
+</body>
+</html>
