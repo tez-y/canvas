@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -16,21 +16,21 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 20px;
+            padding: 10px; /* 全体のパディングを少し狭く */
             box-sizing: border-box;
         }
         .container {
             background-color: #ffffff;
             border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            padding: 24px; /* パディングを少し小さく */
+            padding: 20px; /* パディングを少し狭く */
             width: 100%;
             max-width: 800px; /* Default for smaller screens */
         }
         @media (min-width: 768px) { /* md breakpoint */
             .container {
                 max-width: 900px;
-                padding: 32px; /* タブレット以上では元のパディングに戻す */
+                padding: 24px; /* タブレット以上では元のパディングに戻す */
             }
         }
         @media (min-width: 1024px) { /* lg breakpoint */
@@ -42,14 +42,14 @@
         .button-primary {
             background-color: #4f46e5;
             color: white;
-            padding: 10px 20px;
+            padding: 8px 16px; /* ボタンのパディングを狭く */
             border-radius: 9999px;
             font-weight: 600;
             transition: background-color 0.3s ease;
             cursor: pointer;
             border: none;
             outline: none;
-            font-size: 0.95rem;
+            font-size: 0.9rem; /* フォントサイズを小さく */
         }
         .button-primary:hover {
             background-color: #4338ca;
@@ -57,14 +57,14 @@
         .button-danger {
             background-color: #ef4444;
             color: white;
-            padding: 10px 20px;
+            padding: 8px 16px;
             border-radius: 9999px;
             font-weight: 600;
             transition: background-color 0.3s ease;
             cursor: pointer;
             border: none;
             outline: none;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
         .button-danger:hover {
             background-color: #dc2626;
@@ -72,45 +72,39 @@
         .button-secondary {
             background-color: #6b7280;
             color: white;
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 9999px;
             font-weight: 500;
             transition: background-color 0.3s ease;
             cursor: pointer;
             border: none;
             outline: none;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
         .button-secondary:hover {
             background-color: #4b5563;
-        }
-        .status-message {
-            margin-top: 20px; /* マージンを調整 */
-            font-size: 1.125rem; /* text-lg */
-            color: #4b5563;
         }
         .note-display-area {
             border: 2px dashed #a78bfa; /* 紫系の色に変更 */
             background-color: #ede9fe; /* 紫系の背景色 */
             border-radius: 12px;
-            min-height: 200px;
-            padding: 20px; /* パディングを維持 */
+            min-height: 160px; /* 最小高さを狭く */
+            padding: 15px; /* パディングを狭く */
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             color: #5b21b6;
             font-weight: bold;
-            font-size: 3rem;
+            font-size: 2.5rem; /* フォントサイズを少し小さく */
             line-height: 1.2;
             margin-top: 0; /* 親コンテナのgapで調整 */
-            /* flex: 1; removed from here, now controlled by left-column-wrapper */
-            min-width: 280px; /* 最小幅 */
+            min-width: 250px; /* 最小幅 */
         }
         .note-display-area .octave {
-            font-size: 1.5rem;
+            font-size: 1.2rem; /* オクターブのフォントサイズを小さく */
             color: #8b5cf6;
-            margin-top: 10px;
+            margin-top: 8px; /* マージンを狭く */
         }
         /* ライブ表示の音符の色を動的に変更するためのクラス */
         .note-display-area.correct {
@@ -125,10 +119,10 @@
             background-color: #fee2e2;
             border: 1px solid #ef4444;
             color: #dc2626;
-            padding: 16px;
+            padding: 12px; /* パディングを狭く */
             border-radius: 8px;
-            margin-top: 24px;
-            font-size: 0.95rem;
+            margin-top: 15px; /* マージンを狭く */
+            font-size: 0.9rem;
             text-align: left;
         }
         .control-group {
@@ -136,75 +130,50 @@
             flex-wrap: wrap;
             justify-content: center;
             align-items: center;
-            gap: 15px;
-            margin-top: 20px;
+            gap: 10px; /* ギャップを狭く */
+            margin-top: 15px; /* マージンを狭く */
             margin-bottom: 0;
-        }
-        .tempo-control {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .tempo-control label {
-            font-weight: 600;
-            color: #4b5563;
-            white-space: nowrap;
-        }
-        .tempo-control select {
-            padding: 6px 10px;
-            border-radius: 8px;
-            border: 1px solid #d1d5db;
-            background-color: white;
-            font-size: 0.95rem;
-            color: #374151;
-            cursor: pointer;
-        }
-        .tempo-info {
-            font-size: 0.85rem;
-            color: #6b7280;
-            margin-top: 0;
         }
 
         /* 読み込んだ楽譜表示エリアのスタイル */
         .loaded-music-area {
             margin-top: 0; /* 親コンテナのgapで調整 */
-            padding: 16px;
+            padding: 15px; /* パディングを狭く */
             background-color: #e0f2fe;
             border-radius: 12px;
             border: 1px solid #90cdf4;
             text-align: center;
-            /* flex: 1.5; removed from here, now controlled by left-column-wrapper */
-            min-width: 300px; /* 最小幅 */
+            min-width: 280px; /* 最小幅を狭く */
         }
         .loaded-music-area h3 {
-            font-size: 1.1rem;
+            font-size: 1rem; /* フォントサイズを小さく */
             font-weight: 600;
             color: #2b6cb0;
-            margin-bottom: 10px;
+            margin-bottom: 8px; /* マージンを狭く */
         }
         .loaded-music-notes {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 12px; /* 音符間のギャップを広げる */
+            gap: 8px; /* 音符間のギャップを狭く */
         }
         .loaded-note-item {
             background-color: #bfdbfe;
-            border-radius: 8px; /* 角を丸く */
-            padding: 6px 12px; /* パディングを増やす */
-            font-size: 1.2rem; /* フォントサイズを大きく */
-            font-weight: 600; /* 太字に */
+            border-radius: 8px;
+            padding: 4px 10px; /* パディングを狭く */
+            font-size: 1.1rem; /* フォントサイズを少し小さく */
+            font-weight: 600;
             color: #1e40af;
             white-space: nowrap;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08); /* 軽い影 */
-            transition: all 0.2s ease-in-out; /* ホバーエフェクト用 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            transition: all 0.2s ease-in-out;
         }
         .loaded-note-item.current-expected {
             background-color: #fcd34d;
             color: #92400e;
             font-weight: 700;
             border: 2px solid #f59e0b;
-            transform: scale(1.05); /* 強調時に少し拡大 */
+            transform: scale(1.05);
         }
         .loaded-note-item:hover {
             transform: translateY(-2px);
@@ -218,7 +187,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px;
+            gap: 8px; /* ギャップを狭く */
         }
         .file-input-group input[type="file"] {
             display: none;
@@ -226,28 +195,24 @@
         .file-input-group .custom-file-upload {
             background-color: #3b82f6;
             color: white;
-            padding: 8px 16px;
+            padding: 6px 14px; /* パディングを狭く */
             border-radius: 9999px;
             font-weight: 500;
             transition: background-color 0.3s ease;
             cursor: pointer;
             border: none;
             outline: none;
-            font-size: 0.9rem;
+            font-size: 0.85rem; /* フォントサイズを小さく */
         }
         .file-input-group .custom-file-upload:hover {
             background-color: #2563eb;
-        }
-        .file-name-display {
-            font-size: 0.9rem;
-            color: #4b5563;
         }
 
         /* 新しいラッパー */
         .top-controls-wrapper {
             display: flex;
             flex-direction: column;
-            gap: 15px; /* コントロールグループとファイル選択の間隔 */
+            gap: 10px; /* コントロールグループとファイル選択の間隔を狭く */
             align-items: center;
             width: 100%;
         }
@@ -267,16 +232,16 @@
         .middle-display-wrapper {
             display: flex;
             flex-direction: column; /* Default to column for small screens */
-            gap: 20px; /* Gap between left-column-wrapper and right-column-wrapper on small screens, or between sections if no right-column-wrapper */
+            gap: 15px; /* ギャップを狭く */
             width: 100%;
-            margin-top: 20px;
+            margin-top: 15px; /* マージンを狭く */
         }
 
         @media (min-width: 768px) {
             .middle-display-wrapper {
                 flex-direction: row; /* Make them side-by-side on larger screens */
                 align-items: flex-start; /* Align items to the top */
-                gap: 20px; /* Gap between left and right columns */
+                gap: 15px; /* ギャップを狭く */
             }
         }
 
@@ -284,17 +249,18 @@
         .left-column-wrapper {
             display: flex;
             flex-direction: column;
-            gap: 20px; /* Gap between loaded music and current note */
+            gap: 15px; /* ギャップを狭く */
             flex: 1; /* Take up available space in the row */
-            min-width: 300px; /* Ensure it doesn't get too small */
+            min-width: 280px; /* Ensure it doesn't get too small */
         }
 
-        /* right-column-wrapper: This will contain the image */
+        /* right-column-wrapper: This will contain the image, stacked vertically */
         .right-column-wrapper {
             display: flex;
-            flex-direction: column; /* Even if only one item, keep it flex for consistency */
+            flex-direction: column; /* Stack image vertically */
+            gap: 15px; /* ギャップを狭く */
             flex: 1; /* Take up available space, same as left column for now */
-            min-width: 250px; /* Ensure it doesn't get too small */
+            min-width: 220px; /* Ensure it doesn't get too small */
         }
 
         /* 画像表示エリアのスタイル */
@@ -302,7 +268,7 @@
             margin-top: 0; /* 親コンテナのgapで調整 */
             text-align: center;
             width: 100%;
-            min-height: 320px; /* 画像がない場合の最小高さ (左側の合計高さに合わせて調整) */
+            min-height: 120px; /* 最小高さを狭く */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -312,7 +278,7 @@
         }
         .note-image-display img {
             max-width: 100%;
-            max-height: 100%; /* 親の高さに合わせて調整 */
+            max-height: 200px; /* 画像の最大高さを狭く */
             height: auto;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
@@ -326,43 +292,28 @@
         .button-reset {
             background-color: #14b8a6; /* Teal color */
             color: white;
-            padding: 10px 20px;
+            padding: 8px 16px; /* パディングを狭く */
             border-radius: 9999px;
             font-weight: 600;
             transition: background-color 0.3s ease;
             cursor: pointer;
             border: none;
             outline: none;
-            font-size: 0.95rem;
+            font-size: 0.9rem; /* フォントサイズを小さく */
         }
         .button-reset:hover {
             background-color: #0d9488;
         }
-
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">リアルタイム音階表示</h1>
-        <p class="text-gray-600 mb-8">マイクからの笛の音を検出して音階として表示します。</p>
-
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">帝塚山小学校リコーダー練習ツール</h1>
         <div class="top-controls-wrapper"> <!-- 新しいトップコントロールラッパー -->
             <div class="control-group">
-                <button id="startButton" class="button-primary">マイクを開始</button>
-                <button id="stopButton" class="button-danger" disabled>マイクを停止</button>
-                <button id="resetButton" class="button-reset">最初から始める</button> <!-- 新しいボタン -->
-                
-                <div class="tempo-control">
-                    <label for="tempoSelect">テンポ (BPM):</label>
-                    <select id="tempoSelect">
-                        <option value="60">60</option>
-                        <option value="90">90</option>
-                        <option value="120" selected>120</option>
-                        <option value="150">150</option>
-                        <option value="180">180</option>
-                    </select>
-                </div>
-                <p id="tempoInfo" class="tempo-info"></p>
+                <button id="startButton" class="button-primary">開始</button>
+                <button id="stopButton" class="button-danger" disabled>停止</button>
+                <button id="resetButton" class="button-reset">最初から始める</button>
             </div>
 
             <!-- ファイル選択エリア -->
@@ -371,11 +322,8 @@
                     楽譜ファイルを選択
                 </label>
                 <input type="file" id="musicFileInput" accept=".txt">
-                <span id="fileNameDisplay" class="file-name-display">ファイルが選択されていません</span>
             </div>
         </div> <!-- /top-controls-wrapper -->
-
-        <p id="status" class="status-message">準備完了</p>
 
         <div class="middle-display-wrapper"> <!-- メインコンテンツの新しいラッパー -->
             <div class="left-column-wrapper"> <!-- 左側（楽譜と音階） -->
@@ -413,21 +361,17 @@
 
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
-        const resetButton = document.getElementById('resetButton'); // 新しいボタン
-        const statusDisplay = document.getElementById('status');
+        const resetButton = document.getElementById('resetButton');
         const noteDisplayArea = document.getElementById('noteDisplayArea');
         const currentNoteDisplay = document.getElementById('currentNote');
         const currentOctaveDisplay = document.getElementById('currentOctave');
         const errorMessageDisplay = document.getElementById('errorMessage');
         const loadedMusicArea = document.getElementById('loadedMusicArea');
         const loadedMusicNotes = document.getElementById('loadedMusicNotes');
-        const noteImageDisplay = document.getElementById('noteImageDisplay'); // 画像表示エリア
-        const currentNoteImage = document.getElementById('currentNoteImage'); // 画像要素
-        const imagePlaceholder = document.getElementById('imagePlaceholder'); // 画像プレースホルダー
-        const tempoSelect = document.getElementById('tempoSelect');
-        const tempoInfo = document.getElementById('tempoInfo');
+        const noteImageDisplay = document.getElementById('noteImageDisplay');
+        const currentNoteImage = document.getElementById('currentNoteImage');
+        const imagePlaceholder = document.getElementById('imagePlaceholder');
         const musicFileInput = document.getElementById('musicFileInput');
-        const fileNameDisplay = document.getElementById('fileNameDisplay');
 
         // 音符の名前の配列 (CからBまで)
         const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -466,13 +410,6 @@
             };
         }
 
-        // テンポ情報表示を更新する関数
-        function updateTempoInfo() {
-            const bpm = parseInt(tempoSelect.value);
-            const quarterNoteDurationMs = (60 / bpm) * 1000;
-            tempoInfo.textContent = `${bpm} BPM (四分音符の長さ: ${quarterNoteDurationMs.toFixed(0)} ミリ秒)`;
-        }
-
         // エラーメッセージを表示する関数
         function showErrorMessage(message) {
             errorMessageDisplay.innerHTML = message;
@@ -509,7 +446,6 @@
         // 音符の画像を表示する関数
         function updateNoteImage(noteObj) {
             if (noteObj && noteObj.note && noteObj.octave) {
-                // 'ファ' -> 'ファ' となるように、正規表現で取得した音名をそのまま使用
                 const imageName = `${noteObj.note}${noteObj.octave}.jpg`;
                 currentNoteImage.src = imageName;
                 currentNoteImage.alt = `${noteObj.note}${noteObj.octave}の画像`;
@@ -593,7 +529,6 @@
                     console.error('Error loading music.txt automatically:', error);
                     expectedNotes = [];
                     showErrorMessage(`music.txtが見つからないか、読み込みに失敗しました: ${error.message}。<br>手動で楽譜ファイルを選択してください。音符の判定は行われません。`);
-                    fileNameDisplay.textContent = 'ファイルが選択されていません';
                     displayLoadedMusic();
                     return;
                 }
@@ -605,12 +540,8 @@
 
                 if (expectedNotes.length === 0) {
                     showErrorMessage(`「${loadedFileName}」に有効な音符がありません。ファイルの内容を確認してください。音符の判定は行われません。`);
-                    statusDisplay.textContent = `「${loadedFileName}」に音符がありません`;
-                } else {
-                    statusDisplay.textContent = `楽譜ファイル「${loadedFileName}」を読み込みました。最初の音: ${expectedNotes[0].note}${expectedNotes[0].octave}`;
                 }
                 currentExpectedNoteIndex = 0;
-                fileNameDisplay.textContent = loadedFileName;
                 displayLoadedMusic();
             } catch (error) {
                 console.error('Error parsing music file:', error);
@@ -624,7 +555,6 @@
         function resetApp() {
             stopMicrophone(); // マイクを停止
             currentExpectedNoteIndex = 0; // 楽譜のインデックスをリセット
-            statusDisplay.textContent = '準備完了';
             noteDisplayArea.classList.remove('correct', 'incorrect');
             currentNoteDisplay.textContent = '---';
             currentOctaveDisplay.textContent = '';
@@ -637,11 +567,11 @@
             updateNoteImage(null);
         }
 
-        // マイクを開始する関数
+        // マイクを開始する関数 (Webカメラの取得は含まない)
         async function startMicrophone() {
             hideErrorMessage();
             if (expectedNotes.length === 0) {
-                statusDisplay.textContent = '楽譜ファイルが読み込まれていないため、音符の判定は行われません。';
+                // 楽譜ファイルが読み込まれていない場合でも、アプリは動作させる
             }
 
             currentExpectedNoteIndex = 0;
@@ -655,21 +585,20 @@
                     await audioContext.resume();
                 }
 
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // 音声ストリームのみを取得
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                 mediaStreamSource = audioContext.createMediaStreamSource(stream);
-
+                
                 analyser = audioContext.createAnalyser();
                 analyser.fftSize = 2048;
                 analyser.minDecibels = -90;
                 analyser.maxDecibels = -10;
                 analyser.smoothingTimeConstant = 0.85;
-
                 mediaStreamSource.connect(analyser);
 
-                statusDisplay.textContent = 'マイク入力中...';
                 startButton.disabled = true;
                 stopButton.disabled = false;
-                resetButton.disabled = false; // リセットボタンを有効化
+                resetButton.disabled = false;
 
                 // デバウンス用の変数をリセット
                 debouncedNote = { note: null, octave: null };
@@ -705,10 +634,9 @@
                     userMessage += `予期せぬエラーが発生しました。エラー詳細: ${err.message}`;
                 }
                 showErrorMessage(userMessage);
-                statusDisplay.textContent = 'エラー';
                 startButton.disabled = false;
                 stopButton.disabled = true;
-                resetButton.disabled = true; // エラー時はリセットボタンも無効化
+                resetButton.disabled = true;
             }
         }
 
@@ -737,7 +665,6 @@
                 // ライブ表示は常に最新の検出音を表示
                 currentNoteDisplay.textContent = note;
                 currentOctaveDisplay.textContent = octave;
-                statusDisplay.textContent = `マイク入力中... (検出周波数: ${detectedFrequency.toFixed(2)} Hz)`;
 
                 // --- デバウンスロジック開始 ---
                 if (debouncedNote.note === null || note !== debouncedNote.note || octave !== debouncedNote.octave) {
@@ -783,7 +710,6 @@
                 // ライブ表示をクリア
                 currentNoteDisplay.textContent = "---";
                 currentOctaveDisplay.textContent = "";
-                statusDisplay.textContent = 'マイク入力中... (音を待機中)';
                 noteDisplayArea.classList.remove('correct', 'incorrect'); // 無音時は色をリセット
             }
 
@@ -810,10 +736,10 @@
                 animationFrameId = null;
             }
 
-            statusDisplay.textContent = '停止しました';
             startButton.disabled = false;
             stopButton.disabled = true;
             resetButton.disabled = false; // 停止後はリセット可能
+
             hideErrorMessage();
             currentNoteDisplay.textContent = "---";
             currentOctaveDisplay.textContent = "";
@@ -829,21 +755,16 @@
         // イベントリスナー
         startButton.addEventListener('click', startMicrophone);
         stopButton.addEventListener('click', stopMicrophone);
-        resetButton.addEventListener('click', resetApp); // リセットボタンのイベントリスナー
-        tempoSelect.addEventListener('change', updateTempoInfo);
-
-        // ファイル選択時のイベントリスナー
+        resetButton.addEventListener('click', resetApp);
         musicFileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             loadMusicFile(file);
         });
 
-        // ページロード時に自動的にmusic.txtを読み込み、テンポ情報を初期表示
+        // ページロード時に自動的にmusic.txtを読み込み
         window.onload = async () => {
             await loadMusicFile(); // music.txtの自動読み込みを試行
-            updateTempoInfo();
-            // 初期状態ではファイル選択を促すメッセージを表示
-            displayLoadedMusic();
+            displayLoadedMusic(); // 初期状態ではファイル選択を促すメッセージを表示
             resetButton.disabled = true; // 初期状態ではリセットボタンを無効化
         };
     </script>
