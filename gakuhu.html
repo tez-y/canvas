@@ -278,7 +278,7 @@
         const japaneseNoteStrings = ["ド", "ド#", "レ", "レ#", "ミ", "ファ", "ファ#", "ソ", "ソ#", "ラ", "ラ#", "シ"];
 
         // 検出された音の履歴を保存する配列 (オブジェクト形式で音符と長さを保存)
-        let detectedNotesHistory = []; // Array of { note: string, octave: number, durationText: string, isCorrect: boolean }
+        let detectedNotesHistory = []; // Array of { note: string, octave: number, durationText: string, isCorrect: boolean | null }
         const MAX_HISTORY_ITEMS = 30; // 履歴に表示する最大項目数（グリッド表示に合わせて増やす）
 
         // 音の長さの目安判定用
@@ -287,7 +287,7 @@
         // 履歴への重複記録を防ぐための変数（同じ音符と長さが連続して記録されるのを防ぐ）
         let lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
 
-        // music.txtから読み込む期待される音符のシーケンス
+        // music.csvから読み込む期待される音符のシーケンス
         let expectedNotes = []; // Array of { note: string, octave: number }
         let currentExpectedNoteIndex = 0; // 現在期待されている音符のインデックス
 
@@ -345,17 +345,19 @@
             errorMessageDisplay.innerHTML = '';
         }
 
-        // music.txtを読み込む関数
+        // music.csvを読み込む関数
         async function loadMusicFile() {
             try {
-                const response = await fetch('music.txt');
+                const response = await fetch('music.csv'); // music.csvを読み込むように変更
                 if (!response.ok) {
-                    throw new Error(`Failed to load music.txt: ${response.statusText}`);
+                    throw new Error(`ファイルが見つからないか、読み込みに失敗しました (${response.statusText || 'ネットワークエラー'})`);
                 }
                 const text = await response.text();
-                const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                // CSV形式（カンマ区切り）の最初の行を想定
+                const notesString = text.split('\n')[0]; 
+                const notesArray = notesString.split(',').map(note => note.trim()).filter(note => note.length > 0);
 
-                expectedNotes = lines.map(line => {
+                expectedNotes = notesArray.map(line => {
                     // "ド3", "レ#5" のような形式を想定
                     const match = line.match(/^([ドレミファソラシ][#]?)([0-9]+)$/);
                     if (match) {
@@ -363,25 +365,27 @@
                         const octave = parseInt(match[2], 10);
                         return { note: noteName, octave: octave };
                     }
-                    console.warn(`Invalid note format in music.txt: ${line}`);
+                    console.warn(`Invalid note format in music.csv: ${line}`);
                     return null;
                 }).filter(item => item !== null);
 
                 if (expectedNotes.length === 0) {
-                    showErrorMessage('music.txtに有効な音符がありません。ファイルの内容を確認してください。');
+                    showErrorMessage('music.csvに有効な音符がありません。ファイルの内容を確認してください。音符の判定は行われません。');
                 } else {
-                    statusDisplay.textContent = `music.txtを読み込みました。最初の音: ${expectedNotes[0].note}${expectedNotes[0].octave}`;
+                    statusDisplay.textContent = `music.csvを読み込みました。最初の音: ${expectedNotes[0].note}${expectedNotes[0].octave}`;
                 }
             } catch (error) {
-                console.error('Error loading music.txt:', error);
-                showErrorMessage(`music.txtの読み込みに失敗しました: ${error.message}。ファイルが存在し、正しい形式か確認してください。`);
+                console.error('Error loading music.csv:', error);
+                // music.csvがない場合でもアプリの基本機能は継続
+                expectedNotes = []; // 期待される音符を空にする
+                showErrorMessage(`music.csvの読み込みに失敗しました: ${error.message}。<br>ファイルが存在し、正しい形式か確認してください。音符の判定は行われません。`);
             }
         }
 
         // マイクを開始する関数
         async function startMicrophone() {
             hideErrorMessage();
-            // music.txtを読み込む
+            // music.csvを読み込む
             await loadMusicFile(); 
 
             // 期待される音符のインデックスをリセット
@@ -479,7 +483,7 @@
                 currentOctaveDisplay.textContent = octave;
                 statusDisplay.textContent = `マイク入力中... (検出周波数: ${detectedFrequency.toFixed(2)} Hz)`;
 
-                let isCurrentNoteCorrect = false;
+                let isCurrentNoteCorrect = null; // music.csvがない場合はnull
                 if (expectedNotes.length > 0) {
                     const expectedNoteObj = expectedNotes[currentExpectedNoteIndex];
                     if (note === expectedNoteObj.note && octave === expectedNoteObj.octave) {
@@ -492,10 +496,11 @@
                         isCurrentNoteCorrect = false;
                     }
                 } else {
-                    // music.txtが読み込まれていない、または空の場合はデフォルトの色に戻す
+                    // music.csvが読み込まれていない、または空の場合はデフォルトの色に戻す
                     noteDisplayArea.classList.remove('correct', 'incorrect');
                     currentNoteDisplay.style.color = '';
                     currentOctaveDisplay.style.color = '';
+                    isCurrentNoteCorrect = null; // 比較対象がないためnull
                 }
 
                 // 検出された音符が、現在追跡している安定した音符と異なる場合
@@ -524,7 +529,7 @@
                             }
                             // 履歴表示を更新
                             historyGrid.innerHTML = detectedNotesHistory.map(item => `
-                                <div class="history-item ${item.isCorrect ? 'correct-note' : 'incorrect-note'}">
+                                <div class="history-item ${item.isCorrect === true ? 'correct-note' : (item.isCorrect === false ? 'incorrect-note' : '')}">
                                     <p class="note-text">${item.note}${item.octave}</p>
                                     <p class="duration-text">${item.durationText}</p>
                                 </div>
@@ -537,7 +542,7 @@
                     lastStableNoteTime = performance.now();
 
                     // 正しい音符が検出された場合のみ、期待される音符のインデックスを進める
-                    if (isCurrentNoteCorrect && expectedNotes.length > 0) {
+                    if (isCurrentNoteCorrect === true && expectedNotes.length > 0) {
                         currentExpectedNoteIndex = (currentExpectedNoteIndex + 1) % expectedNotes.length;
                     }
                 }
@@ -550,9 +555,13 @@
                     const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
 
                     // 無音になった時点での最後の音符の正誤を判定
-                    let isLastNoteCorrect = false;
-                    if (expectedNotes.length > 0 && currentStableNote.note === expectedNotes[currentExpectedNoteIndex].note && currentStableNote.octave === expectedNotes[currentExpectedNoteIndex].octave) {
-                        isLastNoteCorrect = true;
+                    let isLastNoteCorrect = null;
+                    if (expectedNotes.length > 0) {
+                        if (currentStableNote.note === expectedNotes[currentExpectedNoteIndex].note && currentStableNote.octave === expectedNotes[currentExpectedNoteIndex].octave) {
+                            isLastNoteCorrect = true;
+                        } else {
+                            isLastNoteCorrect = false;
+                        }
                     }
                     
                     const newNoteEntry = {
@@ -572,7 +581,7 @@
                             detectedNotesHistory.pop();
                         }
                         historyGrid.innerHTML = detectedNotesHistory.map(item => `
-                            <div class="history-item ${item.isCorrect ? 'correct-note' : 'incorrect-note'}">
+                            <div class="history-item ${item.isCorrect === true ? 'correct-note' : (item.isCorrect === false ? 'incorrect-note' : '')}">
                                 <p class="note-text">${item.note}${item.octave}</p>
                                 <p class="duration-text">${item.durationText}</p>
                             </div>
@@ -627,9 +636,13 @@
                 const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
                 
                 // 停止時の最後の音符の正誤を判定
-                let isLastNoteCorrect = false;
-                if (expectedNotes.length > 0 && currentStableNote.note === expectedNotes[currentExpectedNoteIndex].note && currentStableNote.octave === expectedNotes[currentExpectedNoteIndex].octave) {
-                    isLastNoteCorrect = true;
+                let isLastNoteCorrect = null;
+                if (expectedNotes.length > 0) {
+                    if (currentStableNote.note === expectedNotes[currentExpectedNoteIndex].note && currentStableNote.octave === expectedNotes[currentExpectedNoteIndex].octave) {
+                        isLastNoteCorrect = true;
+                    } else {
+                        isLastNoteCorrect = false;
+                    }
                 }
 
                 const newNoteEntry = {
@@ -649,7 +662,7 @@
                         detectedNotesHistory.pop();
                     }
                     historyGrid.innerHTML = detectedNotesHistory.map(item => `
-                        <div class="history-item ${item.isCorrect ? 'correct-note' : 'incorrect-note'}">
+                        <div class="history-item ${item.isCorrect === true ? 'correct-note' : (item.isCorrect === false ? 'incorrect-note' : '')}">
                             <p class="note-text">${item.note}${item.octave}</p>
                             <p class="duration-text">${item.durationText}</p>
                         </div>
@@ -674,13 +687,14 @@
             historyGrid.innerHTML = ''; // 履歴クリア時もグリッドを更新
             lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null }; // 履歴クリア時もリセット
             currentExpectedNoteIndex = 0; // 履歴クリア時もシーケンスをリセット
-            statusDisplay.textContent = `music.txtを読み込みました。最初の音: ${expectedNotes[0] ? expectedNotes[0].note + expectedNotes[0].octave : 'なし'}`;
+            // music.csvが読み込まれていれば、最初の音を表示
+            statusDisplay.textContent = `music.csvを読み込みました。最初の音: ${expectedNotes[0] ? expectedNotes[0].note + expectedNotes[0].octave : 'なし'}`;
             noteDisplayArea.classList.remove('correct', 'incorrect'); // 色をリセット
             currentNoteDisplay.style.color = '';
             currentOctaveDisplay.style.color = '';
         });
 
-        // ページロード時にmusic.txtを読み込み、テンポ情報を初期表示
+        // ページロード時にmusic.csvを読み込み、テンポ情報を初期表示
         loadMusicFile();
         updateTempoInfo();
     </script>
