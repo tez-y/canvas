@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>リアルタイム楽譜表示</title>
+    <title>リアルタイム音階表示</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -11,6 +11,7 @@
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8;
             display: flex;
+            flex-direction: column; /* 要素を縦に並べる */
             justify-content: center;
             align-items: center;
             min-height: 100vh;
@@ -24,19 +25,30 @@
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
             padding: 32px;
             width: 100%;
-            max-width: 800px;
-            text-align: center;
+            max-width: 800px; /* Default for smaller screens */
         }
+        @media (min-width: 768px) { /* md breakpoint */
+            .container {
+                max-width: 900px;
+            }
+        }
+        @media (min-width: 1024px) { /* lg breakpoint */
+            .container {
+                max-width: 1024px; /* Wider for tablets/desktops */
+            }
+        }
+
         .button-primary {
             background-color: #4f46e5;
             color: white;
-            padding: 12px 24px;
+            padding: 10px 20px; /* パディングを少し小さく */
             border-radius: 9999px;
             font-weight: 600;
             transition: background-color 0.3s ease;
             cursor: pointer;
             border: none;
             outline: none;
+            font-size: 0.95rem; /* フォントサイズを調整 */
         }
         .button-primary:hover {
             background-color: #4338ca;
@@ -44,53 +56,201 @@
         .button-danger {
             background-color: #ef4444;
             color: white;
-            padding: 12px 24px;
+            padding: 10px 20px; /* パディングを少し小さく */
             border-radius: 9999px;
             font-weight: 600;
             transition: background-color 0.3s ease;
             cursor: pointer;
             border: none;
             outline: none;
+            font-size: 0.95rem; /* フォントサイズを調整 */
         }
         .button-danger:hover {
             background-color: #dc2626;
+        }
+        .button-secondary {
+            background-color: #6b7280;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            font-size: 0.9rem;
+        }
+        .button-secondary:hover {
+            background-color: #4b5563;
         }
         .status-message {
             margin-top: 24px;
             font-size: 1.125rem; /* text-lg */
             color: #4b5563;
         }
-        .score-area {
-            border: 2px dashed #d1d5db;
+        .note-display-area {
+            border: 2px dashed #a78bfa; /* 紫系の色に変更 */
+            background-color: #ede9fe; /* 紫系の背景色 */
             border-radius: 12px;
             min-height: 200px;
             margin-top: 32px;
             display: flex;
+            flex-direction: column; /* 縦並びにする */
             justify-content: center;
             align-items: center;
+            color: #5b21b6; /* 濃い紫 */
+            font-weight: bold;
+            font-size: 3rem; /* 大きく表示 */
+            line-height: 1.2;
+            padding: 20px; /* パディングを追加 */
+        }
+        .note-display-area .octave {
+            font-size: 1.5rem; /* オクターブは小さめに */
+            color: #8b5cf6; /* 少し薄い紫 */
+            margin-top: 10px; /* オクターブと音符の間にスペース */
+        }
+        /* ライブ表示の音符の色を動的に変更するためのクラス */
+        .note-display-area.correct .note-text,
+        .note-display-area.correct .octave {
+            color: #10B981; /* Tailwind green-500 */
+        }
+        .note-display-area.incorrect .note-text,
+        .note-display-area.incorrect .octave {
+            color: #EF4444; /* Tailwind red-500 */
+        }
+
+        .note-history-area {
+            max-height: 250px; /* 履歴エリアの最大高さ */
+            overflow-y: auto; /* 内容がはみ出たらスクロール */
+            margin-top: 32px;
+            padding: 16px;
+            background-color: #f9fafb; /* 薄いグレーの背景 */
+            border-radius: 12px;
+            border: 1px solid #e5e7eb; /* 軽いボーダー */
+            text-align: left;
+        }
+        .note-history-grid { /* New class for the grid container */
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* Adjust minmax for item width */
+            gap: 8px; /* Gap between items */
+            margin-top: 10px;
+        }
+        .history-item {
+            background-color: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        /* 履歴項目の色 */
+        .history-item.correct-note {
+            border-color: #10B981; /* green-500 */
+            background-color: #D1FAE5; /* green-100 */
+        }
+        .history-item.incorrect-note {
+            border-color: #EF4444; /* red-500 */
+            background-color: #FEE2E2; /* red-100 */
+        }
+        .history-item.correct-note .note-text,
+        .history-item.correct-note .duration-text {
+            color: #065F46; /* green-900 */
+        }
+        .history-item.incorrect-note .note-text,
+        .history-item.incorrect-note .duration-text {
+            color: #991B1B; /* red-900 */
+        }
+
+        /* エラーメッセージボックスのスタイル */
+        .error-box {
+            background-color: #fee2e2; /* red-100 */
+            border: 1px solid #ef4444; /* red-500 */
+            color: #dc2626; /* red-700 */
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 24px;
+            font-size: 0.95rem;
+            text-align: left;
+        }
+        .control-group { /* 新しいコントロールグループのスタイル */
+            display: flex;
+            flex-wrap: wrap; /* 小さい画面で折り返す */
+            justify-content: center;
+            align-items: center;
+            gap: 15px; /* 要素間のスペース */
+            margin-top: 20px; /* 上部のマージン */
+            margin-bottom: 20px; /* 下部のマージン */
+        }
+        .tempo-control { /* テンポコントロールのスタイル */
+            display: flex;
+            align-items: center;
+            gap: 8px; /* ラベルとセレクトボックスの間隔 */
+        }
+        .tempo-control label {
+            font-weight: 600;
+            color: #4b5563;
+            white-space: nowrap; /* ラベルが改行されないように */
+        }
+        .tempo-control select {
+            padding: 6px 10px; /* パディングを小さく */
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            background-color: white;
+            font-size: 0.95rem; /* フォントサイズを調整 */
+            color: #374151;
+            cursor: pointer;
+        }
+        .tempo-info {
+            font-size: 0.85rem; /* フォントサイズを小さく */
             color: #6b7280;
-            font-style: italic;
-            font-size: 1rem;
+            margin-top: 0; /* 上部のマージンを削除 */
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">リアルタイム楽譜表示</h1>
-        <p class="text-gray-600 mb-8">マイクからの笛の音を検出して楽譜として表示します。</p>
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">リアルタイム音階表示</h1>
+        <p class="text-gray-600 mb-8">マイクからの笛の音を検出して音階として表示します。</p>
 
-        <div class="space-x-4 mb-8">
+        <div class="control-group"> <!-- 新しいコントロールグループ -->
             <button id="startButton" class="button-primary">マイクを開始</button>
             <button id="stopButton" class="button-danger" disabled>マイクを停止</button>
+            
+            <div class="tempo-control">
+                <label for="tempoSelect">テンポ (BPM):</label>
+                <select id="tempoSelect">
+                    <option value="60">60</option>
+                    <option value="90">90</option>
+                    <option value="120" selected>120</option>
+                    <option value="150">150</option>
+                    <option value="180">180</option>
+                </select>
+            </div>
+            <p id="tempoInfo" class="tempo-info"></p>
         </div>
 
         <p id="status" class="status-message">準備完了</p>
 
-        <div id="scoreArea" class="score-area">
-            <p>ここに楽譜が表示されます（高度な機能が必要です）</p>
+        <div id="noteDisplayArea" class="note-display-area">
+            <p id="currentNote">---</p>
+            <p id="currentOctave" class="octave"></p>
         </div>
 
-        <div id="errorMessage" class="text-red-500 mt-4 hidden"></div>
+        <div id="noteHistoryArea" class="note-history-area">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">記録された音</h3>
+            <div id="historyGrid" class="note-history-grid">
+                <!-- 検出された音がここに表示されます -->
+            </div>
+            <div class="mt-4 text-right">
+                <button id="clearHistoryButton" class="button-secondary">履歴をクリア</button>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error-box hidden"></div>
     </div>
 
     <script>
@@ -102,26 +262,132 @@
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
         const statusDisplay = document.getElementById('status');
-        const scoreArea = document.getElementById('scoreArea');
+        const noteDisplayArea = document.getElementById('noteDisplayArea');
+        const currentNoteDisplay = document.getElementById('currentNote');
+        const currentOctaveDisplay = document.getElementById('currentOctave');
         const errorMessageDisplay = document.getElementById('errorMessage');
+        const noteHistoryArea = document.getElementById('noteHistoryArea');
+        const historyGrid = document.getElementById('historyGrid');
+        const tempoSelect = document.getElementById('tempoSelect');
+        const tempoInfo = document.getElementById('tempoInfo');
+        const clearHistoryButton = document.getElementById('clearHistoryButton');
+
+        // 音符の名前の配列 (CからBまで)
+        const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        // ドレミ表記の音符名
+        const japaneseNoteStrings = ["ド", "ド#", "レ", "レ#", "ミ", "ファ", "ファ#", "ソ", "ソ#", "ラ", "ラ#", "シ"];
+
+        // 検出された音の履歴を保存する配列 (オブジェクト形式で音符と長さを保存)
+        let detectedNotesHistory = []; // Array of { note: string, octave: number, durationText: string, isCorrect: boolean }
+        const MAX_HISTORY_ITEMS = 30; // 履歴に表示する最大項目数（グリッド表示に合わせて増やす）
+
+        // 音の長さの目安判定用
+        let lastStableNoteTime = 0; // 現在安定して検出されている音符が始まったタイムスタンプ
+        let currentStableNote = { note: null, octave: null }; // 現在安定して検出されている音符
+        // 履歴への重複記録を防ぐための変数（同じ音符と長さが連続して記録されるのを防ぐ）
+        let lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
+
+        // music.txtから読み込む期待される音符のシーケンス
+        let expectedNotes = []; // Array of { note: string, octave: number }
+        let currentExpectedNoteIndex = 0; // 現在期待されている音符のインデックス
+
+        // 周波数から最も近い音符とオクターブを計算する関数
+        // 基準はA4 (440 Hz)
+        function getNoteFromFrequency(frequency) {
+            if (frequency <= 0) {
+                return { note: "---", octave: "" };
+            }
+
+            const A4_FREQUENCY = 440;
+            const SEMITONES_IN_OCTAVE = 12;
+            const A4_MIDI_NUMBER = 69;
+
+            const midiNoteNumber = SEMITONES_IN_OCTAVE * (Math.log(frequency / A4_FREQUENCY) / Math.LN2) + A4_MIDI_NUMBER;
+            const roundedMidiNote = Math.round(midiNoteNumber);
+
+            const noteIndex = roundedMidiNote % SEMITONES_IN_OCTAVE;
+            const octave = Math.floor(roundedMidiNote / SEMITONES_IN_OCTAVE) - 1;
+
+            return {
+                note: japaneseNoteStrings[noteIndex],
+                octave: octave
+            };
+        }
+
+        // 検出された音の持続時間から音符の種類（全音符、四分音符など）を判断する関数
+        function getNoteDurationText(durationMs, bpm) {
+            const quarterNoteMs = (60 / bpm) * 1000; // 四分音符の基準ミリ秒
+
+            if (durationMs >= quarterNoteMs * 3.5) return "全音符"; // 約4拍
+            if (durationMs >= quarterNoteMs * 1.75) return "二分音符"; // 約2拍
+            if (durationMs >= quarterNoteMs * 0.8) return "四分音符"; // 約1拍
+            if (durationMs >= quarterNoteMs * 0.4) return "八分音符"; // 約0.5拍
+            if (durationMs >= quarterNoteMs * 0.2) return "十六分音符"; // 約0.25拍
+            return "短い音"; // その他の短い音
+        }
+
+        // テンポ情報表示を更新する関数
+        function updateTempoInfo() {
+            const bpm = parseInt(tempoSelect.value);
+            const quarterNoteDurationMs = (60 / bpm) * 1000;
+            tempoInfo.textContent = `${bpm} BPM (四分音符の長さ: ${quarterNoteDurationMs.toFixed(0)} ミリ秒)`;
+        }
 
         // エラーメッセージを表示する関数
         function showErrorMessage(message) {
-            errorMessageDisplay.textContent = message;
+            errorMessageDisplay.innerHTML = message;
             errorMessageDisplay.classList.remove('hidden');
         }
 
         // エラーメッセージを非表示にする関数
         function hideErrorMessage() {
             errorMessageDisplay.classList.add('hidden');
-            errorMessageDisplay.textContent = '';
+            errorMessageDisplay.innerHTML = '';
+        }
+
+        // music.txtを読み込む関数
+        async function loadMusicFile() {
+            try {
+                const response = await fetch('music.txt');
+                if (!response.ok) {
+                    throw new Error(`Failed to load music.txt: ${response.statusText}`);
+                }
+                const text = await response.text();
+                const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+                expectedNotes = lines.map(line => {
+                    // "ド3", "レ#5" のような形式を想定
+                    const match = line.match(/^([ドレミファソラシ][#]?)([0-9]+)$/);
+                    if (match) {
+                        const noteName = match[1];
+                        const octave = parseInt(match[2], 10);
+                        return { note: noteName, octave: octave };
+                    }
+                    console.warn(`Invalid note format in music.txt: ${line}`);
+                    return null;
+                }).filter(item => item !== null);
+
+                if (expectedNotes.length === 0) {
+                    showErrorMessage('music.txtに有効な音符がありません。ファイルの内容を確認してください。');
+                } else {
+                    statusDisplay.textContent = `music.txtを読み込みました。最初の音: ${expectedNotes[0].note}${expectedNotes[0].octave}`;
+                }
+            } catch (error) {
+                console.error('Error loading music.txt:', error);
+                showErrorMessage(`music.txtの読み込みに失敗しました: ${error.message}。ファイルが存在し、正しい形式か確認してください。`);
+            }
         }
 
         // マイクを開始する関数
         async function startMicrophone() {
             hideErrorMessage();
+            // music.txtを読み込む
+            await loadMusicFile(); 
+
+            // 期待される音符のインデックスをリセット
+            currentExpectedNoteIndex = 0;
+
             try {
-                // AudioContextを初期化または再開
                 if (!audioContext) {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 }
@@ -129,37 +395,55 @@
                     await audioContext.resume();
                 }
 
-                // マイクのストリームを取得
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaStreamSource = audioContext.createMediaStreamSource(stream);
 
-                // AnalyserNodeを作成（音声データを分析するため）
                 analyser = audioContext.createAnalyser();
-                analyser.fftSize = 2048; // FFTサイズを設定（周波数分解能に影響）
+                analyser.fftSize = 2048;
+                analyser.minDecibels = -90;
+                analyser.maxDecibels = -10;
+                analyser.smoothingTimeConstant = 0.85;
 
-                // マイク入力とアナライザーを接続
                 mediaStreamSource.connect(analyser);
 
                 statusDisplay.textContent = 'マイク入力中...';
                 startButton.disabled = true;
                 stopButton.disabled = false;
 
-                // 音声処理ループを開始
+                // マイク開始時に履歴記録用の変数をリセット
+                currentStableNote = { note: null, octave: null };
+                lastStableNoteTime = performance.now(); // 開始時のタイムスタンプを記録
+                lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
+
+                // ライブ表示のカラーをリセット
+                noteDisplayArea.classList.remove('correct', 'incorrect');
+                currentNoteDisplay.style.color = '';
+                currentOctaveDisplay.style.color = '';
+
                 processAudio();
 
             } catch (err) {
                 console.error('マイクアクセスエラー:', err);
-                let userMessage = 'マイクへのアクセス中に予期せぬエラーが発生しました。'; // より一般的なメッセージ
+                let userMessage = '<strong>マイクを有効にできませんでした。以下の点を確認してください:</strong><br>';
                 if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-                    userMessage = 'マイクが見つかりません。物理的なマイクが接続されているか、オペレーティングシステムの設定でマイクが有効になっているか確認してください。また、この環境（ブラウザのサンドボックスなど）がマイクへのアクセスを許可しているか確認してください。';
+                    userMessage += '<ul><li>1. <strong>物理的なマイクの接続:</strong> マイクがPCに正しく接続されているか、または内蔵マイクが動作しているか確認してください。</li>';
+                    userMessage += '<li>2. <strong>オペレーティングシステム（OS）のプライバシー設定:</strong> OS（Windows、macOSなど）の「プライバシー設定」または「セキュリティとプライバシー」で、お使いのブラウザ（例: Chrome, Firefox, Edge）がマイクにアクセスすることを許可しているか確認してください。</li>';
+                    userMessage += '<li>3. <strong>ブラウザのサイト設定:</strong> ブラウザのアドレスバーの左側にある鍵アイコンや情報アイコンをクリックし、このサイトのマイクアクセスが「許可」になっているか確認してください。以前に「ブロック」した可能性があります。</li>';
+                    userMessage += '<li>4. <strong>ブラウザの再起動:</strong> ブラウザを完全に閉じて再起動してみてください。</li>';
+                    userMessage += '<li>5. <strong>別のブラウザで試す:</strong> 別のブラウザ（例: Chromeでうまくいかない場合、FirefoxやEdgeを試す）で動作するか確認してください。</li></ul>';
                 } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                    userMessage = 'マイクへのアクセスが拒否されました。ブラウザの設定でマイクの使用を許可してください。また、このページが安全な接続 (HTTPS) で提供されているか確認してください。';
+                    userMessage += '<strong>マイクへのアクセスが拒否されました。以下の点を確認してください:</strong><br>';
+                    userMessage += '<ul><li>1. ブラウザのポップアップでマイク使用の許可を求められた際に「許可」を選択したか。</li>';
+                    userMessage += '<li>2. ブラウザの設定で、このサイトのマイクアクセスがブロックされていないか。</li>';
+                    userMessage += '<li>3. このページが安全な接続 (HTTPS://...) で提供されているか。</li></ul>';
                 } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-                    userMessage = 'マイクが使用中です。他のアプリケーションがマイクを使用していないか確認してください。';
+                    userMessage += '<strong>マイクが使用中です。</strong><br>他のアプリケーション（ビデオ会議ツールなど）がマイクを使用していないか確認してください。';
                 } else if (err.name === 'OverconstrainedError') {
-                    userMessage = '指定された制約を満たすマイクが見つかりませんでした。';
+                    userMessage += '<strong>指定された制約を満たすマイクが見つかりませんでした。</strong><br>特定の種類のマイクを要求している場合に発生することがあります。';
                 } else if (err.name === 'SecurityError') {
-                    userMessage = 'セキュリティ上の理由によりマイクにアクセスできません。このページが安全な接続 (HTTPS) で提供されているか確認してください。';
+                    userMessage += '<strong>セキュリティ上の理由によりマイクにアクセスできません。</strong><br>このページが安全な接続 (HTTPS://...) で提供されているか確認してください。';
+                } else {
+                    userMessage += `予期せぬエラーが発生しました。エラー詳細: ${err.message}`;
                 }
                 showErrorMessage(userMessage);
                 statusDisplay.textContent = 'エラー';
@@ -170,54 +454,159 @@
 
         // 音声データを処理するループ
         function processAudio() {
-            // 周波数データを格納する配列
-            const bufferLength = analyser.frequencyBinCount; // fftSize / 2
+            const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
-
-            // アニメーションフレームごとに実行
-            animationFrameId = requestAnimationFrame(processAudio);
-
-            // 周波数データを取得
             analyser.getByteFrequencyData(dataArray);
 
-            // ここでピッチ検出ロジックを実装
-            // 例: 最も高い周波数成分を検出する（簡易的な例であり、正確なピッチ検出ではありません）
-            let maxFrequency = 0;
-            let maxIndex = -1;
+            let maxAmplitude = 0;
+            let maxFrequencyIndex = -1;
+            const MIN_AMPLITUDE_THRESHOLD = 120; // 音として認識する最低振幅（0-255）
+
             for (let i = 0; i < bufferLength; i++) {
-                if (dataArray[i] > maxFrequency) {
-                    maxFrequency = dataArray[i];
-                    maxIndex = i;
+                if (dataArray[i] > maxAmplitude) {
+                    maxAmplitude = dataArray[i];
+                    maxFrequencyIndex = i;
                 }
             }
 
-            if (maxIndex !== -1 && maxFrequency > 0) { // 音が検出された場合
-                // サンプルレートとインデックスから周波数を計算
+            if (maxFrequencyIndex !== -1 && maxAmplitude > MIN_AMPLITUDE_THRESHOLD) {
+                // 音が検出され、十分な音量がある場合
                 const sampleRate = audioContext.sampleRate;
-                const frequency = maxIndex * (sampleRate / analyser.fftSize);
+                const detectedFrequency = maxFrequencyIndex * (sampleRate / analyser.fftSize);
+                const { note, octave } = getNoteFromFrequency(detectedFrequency);
 
-                // この周波数を音符に変換し、楽譜エリアに表示するロジックをここに実装
-                // 例: statusDisplay.textContent = `ピッチ検出: ${frequency.toFixed(2)} Hz`;
-                // 実際の楽譜表示には、音楽理論に基づいた複雑な変換と描画が必要です。
-                // 例えば、Midi.jsやTone.js、VexFlowなどのライブラリが役立つかもしれません。
-                statusDisplay.textContent = `マイク入力中... (簡易ピッチ: ${frequency.toFixed(2)} Hz)`;
-                // scoreArea.textContent = `検出された音符: ${mapFrequencyToNote(frequency)}`; // この関数は未実装
+                currentNoteDisplay.textContent = note;
+                currentOctaveDisplay.textContent = octave;
+                statusDisplay.textContent = `マイク入力中... (検出周波数: ${detectedFrequency.toFixed(2)} Hz)`;
+
+                let isCurrentNoteCorrect = false;
+                if (expectedNotes.length > 0) {
+                    const expectedNoteObj = expectedNotes[currentExpectedNoteIndex];
+                    if (note === expectedNoteObj.note && octave === expectedNoteObj.octave) {
+                        noteDisplayArea.classList.remove('incorrect');
+                        noteDisplayArea.classList.add('correct');
+                        isCurrentNoteCorrect = true;
+                    } else {
+                        noteDisplayArea.classList.remove('correct');
+                        noteDisplayArea.classList.add('incorrect');
+                        isCurrentNoteCorrect = false;
+                    }
+                } else {
+                    // music.txtが読み込まれていない、または空の場合はデフォルトの色に戻す
+                    noteDisplayArea.classList.remove('correct', 'incorrect');
+                    currentNoteDisplay.style.color = '';
+                    currentOctaveDisplay.style.color = '';
+                }
+
+                // 検出された音符が、現在追跡している安定した音符と異なる場合
+                if (currentStableNote.note === null || note !== currentStableNote.note || octave !== currentStableNote.octave) {
+                    // 以前の安定した音符の期間を確定し、履歴に追加
+                    if (currentStableNote.note !== null) {
+                        const durationMs = performance.now() - lastStableNoteTime;
+                        const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
+                        
+                        const newNoteEntry = {
+                            note: currentStableNote.note,
+                            octave: currentStableNote.octave,
+                            durationText: noteDurationText,
+                            isCorrect: isCurrentNoteCorrect // 履歴に正誤情報を追加
+                        };
+
+                        // 履歴に同じ音符と長さの組み合わせが連続しないようにチェック
+                        if (newNoteEntry.note !== lastRecordedNoteInHistory.note ||
+                            newNoteEntry.octave !== lastRecordedNoteInHistory.octave ||
+                            newNoteEntry.durationText !== lastRecordedNoteInHistory.durationText ||
+                            newNoteEntry.isCorrect !== lastRecordedNoteInHistory.isCorrect) { // 正誤情報も比較対象に
+                            
+                            detectedNotesHistory.unshift(newNoteEntry);
+                            if (detectedNotesHistory.length > MAX_HISTORY_ITEMS) {
+                                detectedNotesHistory.pop();
+                            }
+                            // 履歴表示を更新
+                            historyGrid.innerHTML = detectedNotesHistory.map(item => `
+                                <div class="history-item ${item.isCorrect ? 'correct-note' : 'incorrect-note'}">
+                                    <p class="note-text">${item.note}${item.octave}</p>
+                                    <p class="duration-text">${item.durationText}</p>
+                                </div>
+                            `).join('');
+                            lastRecordedNoteInHistory = newNoteEntry;
+                        }
+                    }
+                    // 新しい安定した音符の追跡を開始
+                    currentStableNote = { note: note, octave: octave };
+                    lastStableNoteTime = performance.now();
+
+                    // 正しい音符が検出された場合のみ、期待される音符のインデックスを進める
+                    if (isCurrentNoteCorrect && expectedNotes.length > 0) {
+                        currentExpectedNoteIndex = (currentExpectedNoteIndex + 1) % expectedNotes.length;
+                    }
+                }
+                // else: 同じ音符が継続して検出されているため、durationMsは更新されない
             } else {
+                // 音が検出されない、または音量が小さい場合（無音状態）
+                // 現在追跡中の安定した音符があれば、その期間を確定して履歴に追加
+                if (currentStableNote.note !== null) {
+                    const durationMs = performance.now() - lastStableNoteTime;
+                    const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
+
+                    // 無音になった時点での最後の音符の正誤を判定
+                    let isLastNoteCorrect = false;
+                    if (expectedNotes.length > 0 && currentStableNote.note === expectedNotes[currentExpectedNoteIndex].note && currentStableNote.octave === expectedNotes[currentExpectedNoteIndex].octave) {
+                        isLastNoteCorrect = true;
+                    }
+                    
+                    const newNoteEntry = {
+                        note: currentStableNote.note,
+                        octave: currentStableNote.octave,
+                        durationText: noteDurationText,
+                        isCorrect: isLastNoteCorrect
+                    };
+
+                    if (newNoteEntry.note !== lastRecordedNoteInHistory.note ||
+                        newNoteEntry.octave !== lastRecordedNoteInHistory.octave ||
+                        newNoteEntry.durationText !== lastRecordedNoteInHistory.durationText ||
+                        newNoteEntry.isCorrect !== lastRecordedNoteInHistory.isCorrect) {
+                        
+                        detectedNotesHistory.unshift(newNoteEntry);
+                        if (detectedNotesHistory.length > MAX_HISTORY_ITEMS) {
+                            detectedNotesHistory.pop();
+                        }
+                        historyGrid.innerHTML = detectedNotesHistory.map(item => `
+                            <div class="history-item ${item.isCorrect ? 'correct-note' : 'incorrect-note'}">
+                                <p class="note-text">${item.note}${item.octave}</p>
+                                <p class="duration-text">${item.durationText}</p>
+                            </div>
+                        `).join('');
+                        lastRecordedNoteInHistory = newNoteEntry;
+                    }
+                    // 安定した音符の追跡をリセット
+                    currentStableNote = { note: null, octave: null };
+                    lastStableNoteTime = 0;
+                }
+                // ライブ表示をクリア
+                currentNoteDisplay.textContent = "---";
+                currentOctaveDisplay.textContent = "";
                 statusDisplay.textContent = 'マイク入力中... (音を待機中)';
+                noteDisplayArea.classList.remove('correct', 'incorrect'); // 無音時は色をリセット
             }
+
+            animationFrameId = requestAnimationFrame(processAudio);
         }
 
         // マイクを停止する関数
         function stopMicrophone() {
             if (mediaStreamSource) {
-                // ストリームのトラックを停止
                 mediaStreamSource.mediaStream.getTracks().forEach(track => track.stop());
                 mediaStreamSource.disconnect();
                 mediaStreamSource = null;
             }
             if (audioContext) {
-                // AudioContextを停止（完全にリソースを解放する場合）
-                // audioContext.close(); // 必要に応じて
+                if (audioContext.state !== 'closed') {
+                    audioContext.close().then(() => {
+                        audioContext = null;
+                        console.log('AudioContext closed');
+                    });
+                }
             }
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
@@ -228,16 +617,72 @@
             startButton.disabled = false;
             stopButton.disabled = true;
             hideErrorMessage();
+            currentNoteDisplay.textContent = "---";
+            currentOctaveDisplay.textContent = "";
+            noteDisplayArea.classList.remove('correct', 'incorrect'); // 停止時も色をリセット
+            
+            // 停止時に現在の音符が確定していれば履歴に追加
+            if (currentStableNote.note !== null) {
+                const durationMs = performance.now() - lastStableNoteTime;
+                const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
+                
+                // 停止時の最後の音符の正誤を判定
+                let isLastNoteCorrect = false;
+                if (expectedNotes.length > 0 && currentStableNote.note === expectedNotes[currentExpectedNoteIndex].note && currentStableNote.octave === expectedNotes[currentExpectedNoteIndex].octave) {
+                    isLastNoteCorrect = true;
+                }
+
+                const newNoteEntry = {
+                    note: currentStableNote.note,
+                    octave: currentStableNote.octave,
+                    durationText: noteDurationText,
+                    isCorrect: isLastNoteCorrect
+                };
+
+                if (newNoteEntry.note !== lastRecordedNoteInHistory.note ||
+                    newNoteEntry.octave !== lastRecordedNoteInHistory.octave ||
+                    newNoteEntry.durationText !== lastRecordedNoteInHistory.durationText ||
+                    newNoteEntry.isCorrect !== lastRecordedNoteInHistory.isCorrect) {
+                    
+                    detectedNotesHistory.unshift(newNoteEntry);
+                    if (detectedNotesHistory.length > MAX_HISTORY_ITEMS) {
+                        detectedNotesHistory.pop();
+                    }
+                    historyGrid.innerHTML = detectedNotesHistory.map(item => `
+                        <div class="history-item ${item.isCorrect ? 'correct-note' : 'incorrect-note'}">
+                            <p class="note-text">${item.note}${item.octave}</p>
+                            <p class="duration-text">${item.durationText}</p>
+                        </div>
+                    `).join('');
+                    lastRecordedNoteInHistory = newNoteEntry;
+                }
+            }
+
+            // 停止時に履歴記録用の変数をリセット
+            currentStableNote = { note: null, octave: null };
+            lastStableNoteTime = 0;
+            lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
         }
 
         // イベントリスナー
         startButton.addEventListener('click', startMicrophone);
         stopButton.addEventListener('click', stopMicrophone);
+        tempoSelect.addEventListener('change', updateTempoInfo);
 
-        // ページロード時にAudioContextの初期化を試みる
-        // ユーザーインタラクションなしでAudioContextを開始すると警告が出る場合があるため、
-        // ボタンクリック時に完全に開始するのが推奨されます。
-        // ここでは、ユーザーが最初にボタンをクリックするまでaudioContextはnullのままです。
+        clearHistoryButton.addEventListener('click', () => {
+            detectedNotesHistory = [];
+            historyGrid.innerHTML = ''; // 履歴クリア時もグリッドを更新
+            lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null }; // 履歴クリア時もリセット
+            currentExpectedNoteIndex = 0; // 履歴クリア時もシーケンスをリセット
+            statusDisplay.textContent = `music.txtを読み込みました。最初の音: ${expectedNotes[0] ? expectedNotes[0].note + expectedNotes[0].octave : 'なし'}`;
+            noteDisplayArea.classList.remove('correct', 'incorrect'); // 色をリセット
+            currentNoteDisplay.style.color = '';
+            currentOctaveDisplay.style.color = '';
+        });
+
+        // ページロード時にmusic.txtを読み込み、テンポ情報を初期表示
+        loadMusicFile();
+        updateTempoInfo();
     </script>
 </body>
 </html>
