@@ -23,13 +23,14 @@
             background-color: #ffffff;
             border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            padding: 32px;
+            padding: 24px; /* パディングを少し小さく */
             width: 100%;
             max-width: 800px; /* Default for smaller screens */
         }
         @media (min-width: 768px) { /* md breakpoint */
             .container {
                 max-width: 900px;
+                padding: 32px; /* タブレット以上では元のパディングに戻す */
             }
         }
         @media (min-width: 1024px) { /* lg breakpoint */
@@ -41,14 +42,14 @@
         .button-primary {
             background-color: #4f46e5;
             color: white;
-            padding: 10px 20px; /* パディングを少し小さく */
+            padding: 10px 20px;
             border-radius: 9999px;
             font-weight: 600;
             transition: background-color 0.3s ease;
             cursor: pointer;
             border: none;
             outline: none;
-            font-size: 0.95rem; /* フォントサイズを調整 */
+            font-size: 0.95rem;
         }
         .button-primary:hover {
             background-color: #4338ca;
@@ -56,14 +57,14 @@
         .button-danger {
             background-color: #ef4444;
             color: white;
-            padding: 10px 20px; /* パディングを少し小さく */
+            padding: 10px 20px;
             border-radius: 9999px;
             font-weight: 600;
             transition: background-color 0.3s ease;
             cursor: pointer;
             border: none;
             outline: none;
-            font-size: 0.95rem; /* フォントサイズを調整 */
+            font-size: 0.95rem;
         }
         .button-danger:hover {
             background-color: #dc2626;
@@ -84,7 +85,7 @@
             background-color: #4b5563;
         }
         .status-message {
-            margin-top: 24px;
+            margin-top: 20px; /* マージンを調整 */
             font-size: 1.125rem; /* text-lg */
             color: #4b5563;
         }
@@ -93,21 +94,21 @@
             background-color: #ede9fe; /* 紫系の背景色 */
             border-radius: 12px;
             min-height: 200px;
-            margin-top: 32px;
+            padding: 20px; /* パディングを維持 */
             display: flex;
-            flex-direction: column; /* 縦並びにする */
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            color: #5b21b6; /* 濃い紫 */
+            color: #5b21b6;
             font-weight: bold;
-            font-size: 3rem; /* 大きく表示 */
+            font-size: 3rem;
             line-height: 1.2;
-            padding: 20px; /* パディングを追加 */
+            margin-top: 0; /* 親コンテナのgapで調整 */
         }
         .note-display-area .octave {
-            font-size: 1.5rem; /* オクターブは小さめに */
-            color: #8b5cf6; /* 少し薄い紫 */
-            margin-top: 10px; /* オクターブと音符の間にスペース */
+            font-size: 1.5rem;
+            color: #8b5cf6;
+            margin-top: 10px;
         }
         /* ライブ表示の音符の色を動的に変更するためのクラス */
         .note-display-area.correct .note-text,
@@ -122,17 +123,22 @@
         .note-history-area {
             max-height: 250px; /* 履歴エリアの最大高さ */
             overflow-y: auto; /* 内容がはみ出たらスクロール */
-            margin-top: 32px;
             padding: 16px;
-            background-color: #f9fafb; /* 薄いグレーの背景 */
+            background-color: #f9fafb;
             border-radius: 12px;
-            border: 1px solid #e5e7eb; /* 軽いボーダー */
+            border: 1px solid #e5e7eb;
             text-align: left;
+            margin-top: 20px; /* 上部のマージンを調整 */
         }
-        .note-history-grid { /* New class for the grid container */
+        @media (min-width: 768px) {
+            .note-history-area {
+                max-height: 300px; /* 横長画面で高さを少し増やす */
+            }
+        }
+        .note-history-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* Adjust minmax for item width */
-            gap: 8px; /* Gap between items */
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
             margin-top: 10px;
         }
         .history-item {
@@ -149,65 +155,177 @@
         }
         /* 履歴項目の色 */
         .history-item.correct-note {
-            border-color: #10B981; /* green-500 */
-            background-color: #D1FAE5; /* green-100 */
+            border-color: #10B981;
+            background-color: #D1FAE5;
         }
         .history-item.incorrect-note {
-            border-color: #EF4444; /* red-500 */
-            background-color: #FEE2E2; /* red-100 */
+            border-color: #EF4444;
+            background-color: #FEE2E2;
         }
         .history-item.correct-note .note-text,
         .history-item.correct-note .duration-text {
-            color: #065F46; /* green-900 */
+            color: #065F46;
         }
         .history-item.incorrect-note .note-text,
         .history-item.incorrect-note .duration-text {
-            color: #991B1B; /* red-900 */
+            color: #991B1B;
         }
 
         /* エラーメッセージボックスのスタイル */
         .error-box {
-            background-color: #fee2e2; /* red-100 */
-            border: 1px solid #ef4444; /* red-500 */
-            color: #dc2626; /* red-700 */
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #dc2626;
             padding: 16px;
             border-radius: 8px;
             margin-top: 24px;
             font-size: 0.95rem;
             text-align: left;
         }
-        .control-group { /* 新しいコントロールグループのスタイル */
+        .control-group {
             display: flex;
-            flex-wrap: wrap; /* 小さい画面で折り返す */
+            flex-wrap: wrap;
             justify-content: center;
             align-items: center;
-            gap: 15px; /* 要素間のスペース */
-            margin-top: 20px; /* 上部のマージン */
-            margin-bottom: 20px; /* 下部のマージン */
+            gap: 15px;
+            margin-top: 20px;
+            margin-bottom: 0;
         }
-        .tempo-control { /* テンポコントロールのスタイル */
+        .tempo-control {
             display: flex;
             align-items: center;
-            gap: 8px; /* ラベルとセレクトボックスの間隔 */
+            gap: 8px;
         }
         .tempo-control label {
             font-weight: 600;
             color: #4b5563;
-            white-space: nowrap; /* ラベルが改行されないように */
+            white-space: nowrap;
         }
         .tempo-control select {
-            padding: 6px 10px; /* パディングを小さく */
+            padding: 6px 10px;
             border-radius: 8px;
             border: 1px solid #d1d5db;
             background-color: white;
-            font-size: 0.95rem; /* フォントサイズを調整 */
+            font-size: 0.95rem;
             color: #374151;
             cursor: pointer;
         }
         .tempo-info {
-            font-size: 0.85rem; /* フォントサイズを小さく */
+            font-size: 0.85rem;
             color: #6b7280;
-            margin-top: 0; /* 上部のマージンを削除 */
+            margin-top: 0;
+        }
+
+        /* 読み込んだ楽譜表示エリアのスタイル */
+        .loaded-music-area {
+            margin-top: 0; /* 親コンテナのgapで調整 */
+            padding: 16px;
+            background-color: #e0f2fe;
+            border-radius: 12px;
+            border: 1px solid #90cdf4;
+            text-align: center;
+        }
+        .loaded-music-area h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2b6cb0;
+            margin-bottom: 10px;
+        }
+        .loaded-music-notes {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+        .loaded-note-item {
+            background-color: #bfdbfe;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #1e40af;
+            white-space: nowrap;
+        }
+        .loaded-note-item.current-expected {
+            background-color: #fcd34d;
+            color: #92400e;
+            font-weight: 700;
+            border: 2px solid #f59e0b;
+        }
+
+        /* ファイル選択エリアのスタイル */
+        .file-input-group {
+            margin-top: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .file-input-group input[type="file"] {
+            display: none;
+        }
+        .file-input-group .custom-file-upload {
+            background-color: #3b82f6;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            font-size: 0.9rem;
+        }
+        .file-input-group .custom-file-upload:hover {
+            background-color: #2563eb;
+        }
+        .file-name-display {
+            font-size: 0.9rem;
+            color: #4b5563;
+        }
+
+        /* 新しいラッパー */
+        .top-controls-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 15px; /* コントロールグループとファイル選択の間隔 */
+            align-items: center;
+            width: 100%;
+        }
+        @media (min-width: 768px) {
+            .top-controls-wrapper {
+                flex-direction: row; /* 横並びにする */
+                justify-content: center; /* 中央揃え */
+                flex-wrap: wrap; /* 必要に応じて折り返す */
+            }
+            .control-group, .file-input-group {
+                margin-top: 0;
+                margin-bottom: 0;
+            }
+        }
+
+        .middle-display-wrapper {
+            display: flex;
+            flex-direction: column; /* デフォルトは縦積み（小画面用） */
+            gap: 20px; /* 各セクション間のスペース */
+            width: 100%;
+            margin-top: 20px; /* 上部のマージン */
+        }
+
+        @media (min-width: 768px) { /* タブレット以上の画面サイズ */
+            .middle-display-wrapper {
+                flex-direction: row; /* 横並びにする */
+                align-items: flex-start; /* 上揃え */
+            }
+            .note-display-area {
+                flex: 1; /* 利用可能なスペースを均等に分配 */
+                min-width: 280px; /* 最低幅を設定して潰れすぎないように */
+            }
+            .loaded-music-area { /* 読み込んだ楽譜エリアを横並びのもう一方に配置 */
+                flex: 1.5; /* こちらを少し広めにする */
+                min-width: 300px;
+            }
         }
     </style>
 </head>
@@ -216,31 +334,52 @@
         <h1 class="text-3xl font-bold text-gray-800 mb-6">リアルタイム音階表示</h1>
         <p class="text-gray-600 mb-8">マイクからの笛の音を検出して音階として表示します。</p>
 
-        <div class="control-group"> <!-- 新しいコントロールグループ -->
-            <button id="startButton" class="button-primary">マイクを開始</button>
-            <button id="stopButton" class="button-danger" disabled>マイクを停止</button>
-            
-            <div class="tempo-control">
-                <label for="tempoSelect">テンポ (BPM):</label>
-                <select id="tempoSelect">
-                    <option value="60">60</option>
-                    <option value="90">90</option>
-                    <option value="120" selected>120</option>
-                    <option value="150">150</option>
-                    <option value="180">180</option>
-                </select>
+        <div class="top-controls-wrapper"> <!-- 新しいトップコントロールラッパー -->
+            <div class="control-group">
+                <button id="startButton" class="button-primary">マイクを開始</button>
+                <button id="stopButton" class="button-danger" disabled>マイクを停止</button>
+                
+                <div class="tempo-control">
+                    <label for="tempoSelect">テンポ (BPM):</label>
+                    <select id="tempoSelect">
+                        <option value="60">60</option>
+                        <option value="90">90</option>
+                        <option value="120" selected>120</option>
+                        <option value="150">150</option>
+                        <option value="180">180</option>
+                    </select>
+                </div>
+                <p id="tempoInfo" class="tempo-info"></p>
             </div>
-            <p id="tempoInfo" class="tempo-info"></p>
-        </div>
+
+            <!-- ファイル選択エリア -->
+            <div class="file-input-group">
+                <label for="musicFileInput" class="custom-file-upload">
+                    楽譜ファイルを選択
+                </label>
+                <input type="file" id="musicFileInput" accept=".txt">
+                <span id="fileNameDisplay" class="file-name-display">ファイルが選択されていません</span>
+            </div>
+        </div> <!-- /top-controls-wrapper -->
 
         <p id="status" class="status-message">準備完了</p>
 
-        <div id="noteDisplayArea" class="note-display-area">
-            <p id="currentNote">---</p>
-            <p id="currentOctave" class="octave"></p>
-        </div>
+        <div class="middle-display-wrapper"> <!-- メインコンテンツの新しいラッパー -->
+            <div id="noteDisplayArea" class="note-display-area">
+                <p id="currentNote">---</p>
+                <p id="currentOctave" class="octave"></p>
+            </div>
 
-        <div id="noteHistoryArea" class="note-history-area">
+            <!-- 読み込んだ楽譜表示エリア -->
+            <div id="loadedMusicArea" class="loaded-music-area">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">読み込んだ楽譜</h3>
+                <div id="loadedMusicNotes" class="loaded-music-notes">
+                    <p class="text-gray-500 italic">楽譜ファイルを選択してください</p>
+                </div>
+            </div>
+        </div> <!-- /middle-display-wrapper -->
+
+        <div id="noteHistoryArea" class="note-history-area"> <!-- 記録された音は単独で下に大きく -->
             <h3 class="text-lg font-semibold text-gray-700 mb-2">記録された音</h3>
             <div id="historyGrid" class="note-history-grid">
                 <!-- 検出された音がここに表示されます -->
@@ -266,11 +405,15 @@
         const currentNoteDisplay = document.getElementById('currentNote');
         const currentOctaveDisplay = document.getElementById('currentOctave');
         const errorMessageDisplay = document.getElementById('errorMessage');
+        const loadedMusicArea = document.getElementById('loadedMusicArea');
+        const loadedMusicNotes = document.getElementById('loadedMusicNotes');
         const noteHistoryArea = document.getElementById('noteHistoryArea');
         const historyGrid = document.getElementById('historyGrid');
         const tempoSelect = document.getElementById('tempoSelect');
         const tempoInfo = document.getElementById('tempoInfo');
         const clearHistoryButton = document.getElementById('clearHistoryButton');
+        const musicFileInput = document.getElementById('musicFileInput');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
 
         // 音符の名前の配列 (CからBまで)
         const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -287,7 +430,7 @@
         // 履歴への重複記録を防ぐための変数（同じ音符と長さが連続して記録されるのを防ぐ）
         let lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
 
-        // music.csvから読み込む期待される音符のシーケンス
+        // 期待される音符のシーケンス
         let expectedNotes = []; // Array of { note: string, octave: number }
         let currentExpectedNoteIndex = 0; // 現在期待されている音符のインデックス
 
@@ -345,51 +488,97 @@
             errorMessageDisplay.innerHTML = '';
         }
 
-        // music.csvを読み込む関数
-        async function loadMusicFile() {
-            try {
-                const response = await fetch('music.csv'); // music.csvを読み込むように変更
-                if (!response.ok) {
-                    throw new Error(`ファイルが見つからないか、読み込みに失敗しました (${response.statusText || 'ネットワークエラー'})`);
-                }
-                const text = await response.text();
-                // CSV形式（カンマ区切り）の最初の行を想定
-                const notesString = text.split('\n')[0]; 
-                const notesArray = notesString.split(',').map(note => note.trim()).filter(note => note.length > 0);
-
-                expectedNotes = notesArray.map(line => {
-                    // "ド3", "レ#5" のような形式を想定
-                    const match = line.match(/^([ドレミファソラシ][#]?)([0-9]+)$/);
-                    if (match) {
-                        const noteName = match[1];
-                        const octave = parseInt(match[2], 10);
-                        return { note: noteName, octave: octave };
-                    }
-                    console.warn(`Invalid note format in music.csv: ${line}`);
-                    return null;
-                }).filter(item => item !== null);
-
-                if (expectedNotes.length === 0) {
-                    showErrorMessage('music.csvに有効な音符がありません。ファイルの内容を確認してください。音符の判定は行われません。');
-                } else {
-                    statusDisplay.textContent = `music.csvを読み込みました。最初の音: ${expectedNotes[0].note}${expectedNotes[0].octave}`;
-                }
-            } catch (error) {
-                console.error('Error loading music.csv:', error);
-                // music.csvがない場合でもアプリの基本機能は継続
-                expectedNotes = []; // 期待される音符を空にする
-                showErrorMessage(`music.csvの読み込みに失敗しました: ${error.message}。<br>ファイルが存在し、正しい形式か確認してください。音符の判定は行われません。`);
+        // 読み込んだ楽譜を表示する関数
+        function displayLoadedMusic() {
+            if (expectedNotes.length === 0) {
+                loadedMusicNotes.innerHTML = '<p class="text-gray-500 italic">楽譜ファイルを選択してください</p>';
+                return;
             }
+
+            loadedMusicNotes.innerHTML = expectedNotes.map((item, index) => {
+                const isCurrent = (index === currentExpectedNoteIndex);
+                return `
+                    <div class="loaded-note-item ${isCurrent ? 'current-expected' : ''}">
+                        ${item.note}${item.octave}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // テキストファイルから音符をパースする関数
+        function parseNotesFromString(text) {
+            const parsedNotes = [];
+            // 音名 (ドレミファソラシ) + シャープ (# or ＃)? + オクターブ (0-9 or ０-９)
+            // 全角シャープと全角数字に対応
+            const noteRegex = /([ドレミファソラシ][#＃]?)([0-9０-９])/g;
+            let match;
+
+            while ((match = noteRegex.exec(text)) !== null) {
+                let noteName = match[1]; // 例: "ド", "レ#"
+                let octaveStr = match[2]; // 例: "3", "５"
+
+                // 全角数字を半角数字に変換
+                octaveStr = octaveStr.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+                const octave = parseInt(octaveStr, 10);
+
+                parsedNotes.push({ note: noteName, octave: octave });
+            }
+            return parsedNotes;
+        }
+
+        // 選択されたファイルを読み込む関数
+        async function loadMusicFile(file) {
+            if (!file) {
+                expectedNotes = [];
+                showErrorMessage('ファイルが選択されていません。');
+                displayLoadedMusic();
+                return;
+            }
+
+            fileNameDisplay.textContent = file.name;
+            hideErrorMessage();
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const text = e.target.result;
+                    expectedNotes = parseNotesFromString(text);
+
+                    if (expectedNotes.length === 0) {
+                        showErrorMessage('選択されたファイルに有効な音符がありません。ファイルの内容を確認してください。音符の判定は行われません。');
+                        statusDisplay.textContent = '楽譜に音符がありません';
+                    } else {
+                        statusDisplay.textContent = `楽譜ファイル「${file.name}」を読み込みました。最初の音: ${expectedNotes[0].note}${expectedNotes[0].octave}`;
+                    }
+                    currentExpectedNoteIndex = 0;
+                    displayLoadedMusic();
+                } catch (error) {
+                    console.error('Error parsing music file:', error);
+                    expectedNotes = [];
+                    showErrorMessage(`ファイルの解析に失敗しました: ${error.message}。<br>ファイルの内容が正しい形式か確認してください。音符の判定は行われません。`);
+                    displayLoadedMusic();
+                }
+            };
+            reader.onerror = (e) => {
+                console.error('Error reading file:', reader.error);
+                expectedNotes = [];
+                showErrorMessage(`ファイルの読み込みに失敗しました: ${reader.error.name}。<br>ファイルが破損しているか、アクセス権限がない可能性があります。`);
+                displayLoadedMusic();
+            };
+            // UTF-8として読み込む (Shift-JISは自動判別されないため、ユーザーがShift-JISで保存している場合は文字化けの可能性あり)
+            reader.readAsText(file); 
         }
 
         // マイクを開始する関数
         async function startMicrophone() {
             hideErrorMessage();
-            // music.csvを読み込む
-            await loadMusicFile(); 
+            if (expectedNotes.length === 0) {
+                showErrorMessage('楽譜ファイルが読み込まれていません。ファイルを選択して読み込んでください。');
+                return;
+            }
 
-            // 期待される音符のインデックスをリセット
             currentExpectedNoteIndex = 0;
+            displayLoadedMusic();
 
             try {
                 if (!audioContext) {
@@ -414,12 +603,10 @@
                 startButton.disabled = true;
                 stopButton.disabled = false;
 
-                // マイク開始時に履歴記録用の変数をリセット
                 currentStableNote = { note: null, octave: null };
-                lastStableNoteTime = performance.now(); // 開始時のタイムスタンプを記録
+                lastStableNoteTime = performance.now();
                 lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
 
-                // ライブ表示のカラーをリセット
                 noteDisplayArea.classList.remove('correct', 'incorrect');
                 currentNoteDisplay.style.color = '';
                 currentOctaveDisplay.style.color = '';
@@ -445,7 +632,7 @@
                 } else if (err.name === 'OverconstrainedError') {
                     userMessage += '<strong>指定された制約を満たすマイクが見つかりませんでした。</strong><br>特定の種類のマイクを要求している場合に発生することがあります。';
                 } else if (err.name === 'SecurityError') {
-                    userMessage += '<strong>セキュリティ上の理由によりマイクにアクセスできません。</strong><br>このページが安全な接続 (HTTPS://...) で提供されているか確認してください。';
+                    userMessage += '<strong>セキュリティ上の理由によりマイクにアクセスできません。</strong><br>このページが安全な接続 (HTTPS://...) で提供されているか。';
                 } else {
                     userMessage += `予期せぬエラーが発生しました。エラー詳細: ${err.message}`;
                 }
@@ -464,7 +651,7 @@
 
             let maxAmplitude = 0;
             let maxFrequencyIndex = -1;
-            const MIN_AMPLITUDE_THRESHOLD = 120; // 音として認識する最低振幅（0-255）
+            const MIN_AMPLITUDE_THRESHOLD = 120;
 
             for (let i = 0; i < bufferLength; i++) {
                 if (dataArray[i] > maxAmplitude) {
@@ -474,7 +661,6 @@
             }
 
             if (maxFrequencyIndex !== -1 && maxAmplitude > MIN_AMPLITUDE_THRESHOLD) {
-                // 音が検出され、十分な音量がある場合
                 const sampleRate = audioContext.sampleRate;
                 const detectedFrequency = maxFrequencyIndex * (sampleRate / analyser.fftSize);
                 const { note, octave } = getNoteFromFrequency(detectedFrequency);
@@ -483,7 +669,7 @@
                 currentOctaveDisplay.textContent = octave;
                 statusDisplay.textContent = `マイク入力中... (検出周波数: ${detectedFrequency.toFixed(2)} Hz)`;
 
-                let isCurrentNoteCorrect = null; // music.csvがない場合はnull
+                let isCurrentNoteCorrect = null;
                 if (expectedNotes.length > 0) {
                     const expectedNoteObj = expectedNotes[currentExpectedNoteIndex];
                     if (note === expectedNoteObj.note && octave === expectedNoteObj.octave) {
@@ -496,16 +682,13 @@
                         isCurrentNoteCorrect = false;
                     }
                 } else {
-                    // music.csvが読み込まれていない、または空の場合はデフォルトの色に戻す
                     noteDisplayArea.classList.remove('correct', 'incorrect');
                     currentNoteDisplay.style.color = '';
                     currentOctaveDisplay.style.color = '';
-                    isCurrentNoteCorrect = null; // 比較対象がないためnull
+                    isCurrentNoteCorrect = null;
                 }
 
-                // 検出された音符が、現在追跡している安定した音符と異なる場合
                 if (currentStableNote.note === null || note !== currentStableNote.note || octave !== currentStableNote.octave) {
-                    // 以前の安定した音符の期間を確定し、履歴に追加
                     if (currentStableNote.note !== null) {
                         const durationMs = performance.now() - lastStableNoteTime;
                         const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
@@ -514,20 +697,18 @@
                             note: currentStableNote.note,
                             octave: currentStableNote.octave,
                             durationText: noteDurationText,
-                            isCorrect: isCurrentNoteCorrect // 履歴に正誤情報を追加
+                            isCorrect: isCurrentNoteCorrect
                         };
 
-                        // 履歴に同じ音符と長さの組み合わせが連続しないようにチェック
                         if (newNoteEntry.note !== lastRecordedNoteInHistory.note ||
                             newNoteEntry.octave !== lastRecordedNoteInHistory.octave ||
                             newNoteEntry.durationText !== lastRecordedNoteInHistory.durationText ||
-                            newNoteEntry.isCorrect !== lastRecordedNoteInHistory.isCorrect) { // 正誤情報も比較対象に
+                            newNoteEntry.isCorrect !== lastRecordedNoteInHistory.isCorrect) {
                             
                             detectedNotesHistory.unshift(newNoteEntry);
                             if (detectedNotesHistory.length > MAX_HISTORY_ITEMS) {
                                 detectedNotesHistory.pop();
                             }
-                            // 履歴表示を更新
                             historyGrid.innerHTML = detectedNotesHistory.map(item => `
                                 <div class="history-item ${item.isCorrect === true ? 'correct-note' : (item.isCorrect === false ? 'incorrect-note' : '')}">
                                     <p class="note-text">${item.note}${item.octave}</p>
@@ -537,27 +718,23 @@
                             lastRecordedNoteInHistory = newNoteEntry;
                         }
                     }
-                    // 新しい安定した音符の追跡を開始
                     currentStableNote = { note: note, octave: octave };
                     lastStableNoteTime = performance.now();
 
-                    // 正しい音符が検出された場合のみ、期待される音符のインデックスを進める
                     if (isCurrentNoteCorrect === true && expectedNotes.length > 0) {
                         currentExpectedNoteIndex = (currentExpectedNoteIndex + 1) % expectedNotes.length;
+                        displayLoadedMusic();
                     }
                 }
-                // else: 同じ音符が継続して検出されているため、durationMsは更新されない
             } else {
-                // 音が検出されない、または音量が小さい場合（無音状態）
-                // 現在追跡中の安定した音符があれば、その期間を確定して履歴に追加
                 if (currentStableNote.note !== null) {
                     const durationMs = performance.now() - lastStableNoteTime;
                     const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
 
-                    // 無音になった時点での最後の音符の正誤を判定
                     let isLastNoteCorrect = null;
                     if (expectedNotes.length > 0) {
-                        if (currentStableNote.note === expectedNotes[currentExpectedNoteIndex].note && currentStableNote.octave === expectedNotes[currentExpectedNoteIndex].octave) {
+                        const expectedNoteObj = expectedNotes[currentExpectedNoteIndex];
+                        if (currentStableNote.note === expectedNoteObj.note && currentStableNote.octave === expectedNoteObj.octave) {
                             isLastNoteCorrect = true;
                         } else {
                             isLastNoteCorrect = false;
@@ -588,15 +765,13 @@
                         `).join('');
                         lastRecordedNoteInHistory = newNoteEntry;
                     }
-                    // 安定した音符の追跡をリセット
                     currentStableNote = { note: null, octave: null };
                     lastStableNoteTime = 0;
                 }
-                // ライブ表示をクリア
                 currentNoteDisplay.textContent = "---";
                 currentOctaveDisplay.textContent = "";
                 statusDisplay.textContent = 'マイク入力中... (音を待機中)';
-                noteDisplayArea.classList.remove('correct', 'incorrect'); // 無音時は色をリセット
+                noteDisplayArea.classList.remove('correct', 'incorrect');
             }
 
             animationFrameId = requestAnimationFrame(processAudio);
@@ -628,17 +803,16 @@
             hideErrorMessage();
             currentNoteDisplay.textContent = "---";
             currentOctaveDisplay.textContent = "";
-            noteDisplayArea.classList.remove('correct', 'incorrect'); // 停止時も色をリセット
+            noteDisplayArea.classList.remove('correct', 'incorrect');
             
-            // 停止時に現在の音符が確定していれば履歴に追加
             if (currentStableNote.note !== null) {
                 const durationMs = performance.now() - lastStableNoteTime;
                 const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
                 
-                // 停止時の最後の音符の正誤を判定
                 let isLastNoteCorrect = null;
                 if (expectedNotes.length > 0) {
-                    if (currentStableNote.note === expectedNotes[currentExpectedNoteIndex].note && currentStableNote.octave === expectedNotes[currentExpectedNoteIndex].octave) {
+                    const expectedNoteObj = expectedNotes[currentExpectedNoteIndex];
+                    if (currentStableNote.note === expectedNoteObj.note && currentStableNote.octave === expectedNoteObj.octave) {
                         isLastNoteCorrect = true;
                     } else {
                         isLastNoteCorrect = false;
@@ -671,10 +845,10 @@
                 }
             }
 
-            // 停止時に履歴記録用の変数をリセット
             currentStableNote = { note: null, octave: null };
             lastStableNoteTime = 0;
             lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
+            displayLoadedMusic();
         }
 
         // イベントリスナー
@@ -684,19 +858,26 @@
 
         clearHistoryButton.addEventListener('click', () => {
             detectedNotesHistory = [];
-            historyGrid.innerHTML = ''; // 履歴クリア時もグリッドを更新
-            lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null }; // 履歴クリア時もリセット
-            currentExpectedNoteIndex = 0; // 履歴クリア時もシーケンスをリセット
-            // music.csvが読み込まれていれば、最初の音を表示
-            statusDisplay.textContent = `music.csvを読み込みました。最初の音: ${expectedNotes[0] ? expectedNotes[0].note + expectedNotes[0].octave : 'なし'}`;
-            noteDisplayArea.classList.remove('correct', 'incorrect'); // 色をリセット
+            historyGrid.innerHTML = '';
+            lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
+            currentExpectedNoteIndex = 0;
+            statusDisplay.textContent = `楽譜ファイルの状態: ${expectedNotes[0] ? expectedNotes[0].note + expectedNotes[0].octave + 'から開始' : 'なし'}`;
+            noteDisplayArea.classList.remove('correct', 'incorrect');
             currentNoteDisplay.style.color = '';
             currentOctaveDisplay.style.color = '';
+            displayLoadedMusic();
         });
 
-        // ページロード時にmusic.csvを読み込み、テンポ情報を初期表示
-        loadMusicFile();
+        // ファイル選択時のイベントリスナー
+        musicFileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            loadMusicFile(file);
+        });
+
+        // ページロード時にテンポ情報を初期表示
         updateTempoInfo();
+        // 初期状態ではファイル選択を促すメッセージを表示
+        displayLoadedMusic();
     </script>
 </body>
 </html>
