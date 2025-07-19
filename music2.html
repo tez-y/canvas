@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リアルタイム音階表示</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            flex-direction: column; /* 要素を縦に並べる */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 24px; /* パディングを少し小さく */
+            width: 100%;
+            max-width: 800px; /* Default for smaller screens */
+        }
+        @media (min-width: 768px) { /* md breakpoint */
+            .container {
+                max-width: 900px;
+                padding: 32px; /* タブレット以上では元のパディングに戻す */
+            }
+        }
+        @media (min-width: 1024px) { /* lg breakpoint */
+            .container {
+                max-width: 1024px; /* Wider for tablets/desktops */
+            }
+        }
+
+        .button-primary {
+            background-color: #4f46e5;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            font-size: 0.95rem;
+        }
+        .button-primary:hover {
+            background-color: #4338ca;
+        }
+        .button-danger {
+            background-color: #ef4444;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            font-size: 0.95rem;
+        }
+        .button-danger:hover {
+            background-color: #dc2626;
+        }
+        .button-secondary {
+            background-color: #6b7280;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            font-size: 0.9rem;
+        }
+        .button-secondary:hover {
+            background-color: #4b5563;
+        }
+        .status-message {
+            margin-top: 20px; /* マージンを調整 */
+            font-size: 1.125rem; /* text-lg */
+            color: #4b5563;
+        }
+        .note-display-area {
+            border: 2px dashed #a78bfa; /* 紫系の色に変更 */
+            background-color: #ede9fe; /* 紫系の背景色 */
+            border-radius: 12px;
+            min-height: 200px;
+            padding: 20px; /* パディングを維持 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #5b21b6;
+            font-weight: bold;
+            font-size: 3rem;
+            line-height: 1.2;
+            margin-top: 0; /* 親コンテナのgapで調整 */
+            min-width: 280px; /* 最小幅 */
+        }
+        .note-display-area .octave {
+            font-size: 1.5rem;
+            color: #8b5cf6;
+            margin-top: 10px;
+        }
+        /* ライブ表示の音符の色を動的に変更するためのクラス */
+        .note-display-area.correct {
+            color: #10B981; /* Tailwind green-500 */
+        }
+        .note-display-area.incorrect {
+            color: #EF4444; /* Tailwind red-500 */
+        }
+
+        /* エラーメッセージボックスのスタイル */
+        .error-box {
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #dc2626;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 24px;
+            font-size: 0.95rem;
+            text-align: left;
+        }
+        .control-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+            margin-bottom: 0;
+        }
+        /* Removed .tempo-control as it's no longer needed */
+        /* Removed .tempo-control label as it's no longer needed */
+        /* Removed .tempo-control select as it's no longer needed */
+        /* Removed .tempo-info as it's no longer needed */
+
+        /* 読み込んだ楽譜表示エリアのスタイル */
+        .loaded-music-area {
+            margin-top: 0; /* 親コンテナのgapで調整 */
+            padding: 16px;
+            background-color: #e0f2fe;
+            border-radius: 12px;
+            border: 1px solid #90cdf4;
+            text-align: center;
+            min-width: 300px; /* 最小幅 */
+        }
+        .loaded-music-area h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2b6cb0;
+            margin-bottom: 10px;
+        }
+        .loaded-music-notes {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px; /* 音符間のギャップを広げる */
+        }
+        .loaded-note-item {
+            background-color: #bfdbfe;
+            border-radius: 8px; /* 角を丸く */
+            padding: 6px 12px; /* パディングを増やす */
+            font-size: 1.2rem; /* フォントサイズを大きく */
+            font-weight: 600; /* 太字に */
+            color: #1e40af;
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08); /* 軽い影 */
+            transition: all 0.2s ease-in-out; /* ホバーエフェクト用 */
+        }
+        .loaded-note-item.current-expected {
+            background-color: #fcd34d;
+            color: #92400e;
+            font-weight: 700;
+            border: 2px solid #f59e0b;
+            transform: scale(1.05); /* 強調時に少し拡大 */
+        }
+        .loaded-note-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+        }
+
+        /* ファイル選択エリアのスタイル */
+        .file-input-group {
+            margin-top: 0; /* 親のtop-controls-wrapperのgapで調整 */
+            margin-bottom: 0; /* 親のtop-controls-wrapperのgapで調整 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .file-input-group input[type="file"] {
+            display: none;
+        }
+        .file-input-group .custom-file-upload {
+            background-color: #3b82f6;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            font-size: 0.9rem;
+        }
+        .file-input-group .custom-file-upload:hover {
+            background-color: #2563eb;
+        }
+        .file-name-display {
+            font-size: 0.9rem;
+            color: #4b5563;
+        }
+
+        /* 新しいラッパー */
+        .top-controls-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 15px; /* コントロールグループとファイル選択の間隔 */
+            align-items: center;
+            width: 100%;
+        }
+        @media (min-width: 768px) {
+            .top-controls-wrapper {
+                flex-direction: row; /* 横並びにする */
+                justify-content: center; /* 中央揃え */
+                flex-wrap: wrap; /* 必要に応じて折り返す */
+            }
+            .control-group, .file-input-group {
+                margin-top: 0;
+                margin-bottom: 0;
+            }
+        }
+
+        /* middle-display-wrapper: This will contain the left and right columns */
+        .middle-display-wrapper {
+            display: flex;
+            flex-direction: column; /* Default to column for small screens */
+            gap: 20px; /* Gap between left-column-wrapper and right-column-wrapper on small screens, or between sections if no right-column-wrapper */
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .middle-display-wrapper {
+                flex-direction: row; /* Make them side-by-side on larger screens */
+                align-items: flex-start; /* Align items to the top */
+                gap: 20px; /* Gap between left and right columns */
+            }
+        }
+
+        /* left-column-wrapper: This will contain loaded music and current note, stacked vertically */
+        .left-column-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 20px; /* Gap between loaded music and current note */
+            flex: 1; /* Take up available space in the row */
+            min-width: 300px; /* Ensure it doesn't get too small */
+        }
+
+        /* right-column-wrapper: This will contain the image and webcam, stacked vertically */
+        .right-column-wrapper {
+            display: flex;
+            flex-direction: column; /* Stack image and webcam vertically */
+            gap: 20px; /* Gap between image and webcam */
+            flex: 1; /* Take up available space, same as left column for now */
+            min-width: 250px; /* Ensure it doesn't get too small */
+        }
+
+        /* 画像表示エリアのスタイル */
+        .note-image-display {
+            margin-top: 0; /* 親コンテナのgapで調整 */
+            text-align: center;
+            width: 100%;
+            min-height: 150px; /* 画像がない場合の最小高さ */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f4f8; /* 背景色 */
+            border-radius: 12px;
+            overflow: hidden; /* 画像がはみ出さないように */
+        }
+        .note-image-display img {
+            max-width: 100%;
+            max-height: 250px; /* 画像の最大高さ */
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            object-fit: contain; /* 画像全体を表示 */
+        }
+        .note-image-display .placeholder-text {
+            color: #6b7280;
+            font-style: italic;
+        }
+        /* 「最初から始める」ボタンのスタイル */
+        .button-reset {
+            background-color: #14b8a6; /* Teal color */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            font-size: 0.95rem;
+        }
+        .button-reset:hover {
+            background-color: #0d9488;
+        }
+
+        /* New webcam area styles */
+        .webcam-area {
+            background-color: #f9fafb;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            padding: 16px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px; /* Minimum height for the webcam area */
+        }
+        .webcam-area video {
+            width: 100%;
+            max-height: 200px; /* Limit video height */
+            background-color: black;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            object-fit: contain; /* Ensure video fits within its bounds */
+        }
+        .webcam-controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .recording-status {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+        /* For download link to look like a button */
+        .button-download {
+            background-color: #22c55e; /* Green color */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            font-size: 0.95rem;
+            text-decoration: none; /* Remove underline for links */
+            display: inline-flex; /* To center content and apply padding */
+            align-items: center;
+            justify-content: center;
+        }
+        .button-download:hover {
+            background-color: #16a34a;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">リアルタイム音階表示</h1>
+        <p class="text-gray-600 mb-8">マイクからの笛の音を検出して音階として表示します。</p>
+
+        <div class="top-controls-wrapper"> <!-- 新しいトップコントロールラッパー -->
+            <div class="control-group">
+                <button id="startButton" class="button-primary">マイクを開始</button>
+                <button id="stopButton" class="button-danger" disabled>マイクを停止</button>
+                <button id="resetButton" class="button-reset">最初から始める</button>
+                
+                <!-- テンポコントロールを削除 -->
+                <!-- <div class="tempo-control">
+                    <label for="tempoSelect">テンポ (BPM):</label>
+                    <select id="tempoSelect">
+                        <option value="60">60</option>
+                        <option value="90">90</option>
+                        <option value="120" selected>120</option>
+                        <option value="150">150</option>
+                        <option value="180">180</option>
+                    </select>
+                </div>
+                <p id="tempoInfo" class="tempo-info"></p> -->
+            </div>
+
+            <!-- ファイル選択エリア -->
+            <div class="file-input-group">
+                <label for="musicFileInput" class="custom-file-upload">
+                    楽譜ファイルを選択
+                </label>
+                <input type="file" id="musicFileInput" accept=".txt">
+                <span id="fileNameDisplay" class="file-name-display">ファイルが選択されていません</span>
+            </div>
+        </div> <!-- /top-controls-wrapper -->
+
+        <p id="status" class="status-message">準備完了</p>
+
+        <div class="middle-display-wrapper"> <!-- メインコンテンツの新しいラッパー -->
+            <div class="left-column-wrapper"> <!-- 左側（楽譜と音階） -->
+                <!-- 読み込んだ楽譜表示エリア -->
+                <div id="loadedMusicArea" class="loaded-music-area">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">読み込んだ楽譜</h3>
+                    <div id="loadedMusicNotes" class="loaded-music-notes">
+                        <p class="text-gray-500 italic">楽譜ファイルを選択してください</p>
+                    </div>
+                </div>
+
+                <div id="noteDisplayArea" class="note-display-area">
+                    <p id="currentNote">---</p>
+                    <p id="currentOctave" class="octave"></p>
+                </div>
+            </div> <!-- /left-column-wrapper -->
+
+            <div class="right-column-wrapper"> <!-- 右側（画像とWebカメラ） -->
+                <!-- 画像表示エリア -->
+                <div id="noteImageDisplay" class="note-image-display">
+                    <img id="currentNoteImage" src="" alt="現在の音符の画像" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" style="display:none;">
+                    <p class="placeholder-text" id="imagePlaceholder">画像は利用できません</p>
+                </div>
+
+                <!-- Webカメラと録画エリア -->
+                <div class="webcam-area">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Webカメラ & 録画</h3>
+                    <video id="webcamVideo" autoplay muted playsinline style="display:none;"></video>
+                    <div class="webcam-controls">
+                        <button id="recordButton" class="button-primary" disabled>録画開始</button>
+                        <button id="stopRecordButton" class="button-danger" disabled>録画停止</button>
+                        <a id="downloadRecordingButton" class="button-download" href="#" download style="display:none;">録画ダウンロード</a>
+                    </div>
+                    <p id="recordingStatus" class="recording-status"></p>
+                </div>
+            </div> <!-- /right-column-wrapper -->
+        </div> <!-- /middle-display-wrapper -->
+
+        <div id="errorMessage" class="error-box hidden"></div>
+    </div>
+
+    <script>
+        let audioContext;
+        let mediaStreamSource;
+        let analyser;
+        let animationFrameId;
+
+        // New variables for webcam and recording
+        let mediaRecorder;
+        let recordedChunks = [];
+        let webcamStream; // To hold the webcam MediaStream
+
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const resetButton = document.getElementById('resetButton');
+        const statusDisplay = document.getElementById('status');
+        const noteDisplayArea = document.getElementById('noteDisplayArea');
+        const currentNoteDisplay = document.getElementById('currentNote');
+        const currentOctaveDisplay = document.getElementById('currentOctave'); // Corrected typo
+        const errorMessageDisplay = document.getElementById('errorMessage');
+        const loadedMusicArea = document.getElementById('loadedMusicArea');
+        const loadedMusicNotes = document.getElementById('loadedMusicNotes');
+        const noteImageDisplay = document.getElementById('noteImageDisplay');
+        const currentNoteImage = document.getElementById('currentNoteImage');
+        const imagePlaceholder = document.getElementById('imagePlaceholder');
+        // const tempoSelect = document.getElementById('tempoSelect'); // Removed
+        // const tempoInfo = document.getElementById('tempoInfo'); // Removed
+        const musicFileInput = document.getElementById('musicFileInput');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+        // New webcam and recording elements
+        const webcamVideo = document.getElementById('webcamVideo');
+        const recordButton = document.getElementById('recordButton');
+        const stopRecordButton = document.getElementById('stopRecordButton');
+        const downloadRecordingButton = document.getElementById('downloadRecordingButton');
+        const recordingStatus = document.getElementById('recordingStatus');
+
+        // 音符の名前の配列 (CからBまで)
+        const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        // ドレミ表記の音符名
+        const japaneseNoteStrings = ["ド", "ド#", "レ", "レ#", "ミ", "ファ", "ファ#", "ソ", "ソ#", "ラ", "ラ#", "シ"];
+
+        // デバウンス処理のための変数
+        let debouncedNote = { note: null, octave: null };
+        let debouncedNoteStartTime = 0;
+        const DEBOUNCE_THRESHOLD_MS = 100; // 音階が安定していると見なす最小時間 (ミリ秒)
+
+        // 期待される音符のシーケンス
+        let expectedNotes = []; // Array of { note: string, octave: number }
+        let currentExpectedNoteIndex = 0; // 現在期待されている音符のインデックス
+
+        // 周波数から最も近い音符とオクターブを計算する関数
+        // 基準はA4 (440 Hz)
+        function getNoteFromFrequency(frequency) {
+            if (frequency <= 0) {
+                return { note: "---", octave: "" };
+            }
+
+            const A4_FREQUENCY = 440;
+            const SEMITONES_IN_OCTAVE = 12;
+            const A4_MIDI_NUMBER = 69;
+
+            const midiNoteNumber = SEMITONES_IN_OCTAVE * (Math.log(frequency / A4_FREQUENCY) / Math.LN2) + A4_MIDI_NUMBER;
+            const roundedMidiNote = Math.round(midiNoteNumber);
+
+            const noteIndex = roundedMidiNote % SEMITONES_IN_OCTAVE;
+            const octave = Math.floor(roundedMidiNote / SEMITONES_IN_OCTAVE) - 1;
+
+            return {
+                note: japaneseNoteStrings[noteIndex],
+                octave: octave
+            };
+        }
+
+        // テンポ情報表示を更新する関数 (削除)
+        // function updateTempoInfo() {
+        //     const bpm = parseInt(tempoSelect.value);
+        //     const quarterNoteDurationMs = (60 / bpm) * 1000;
+        //     tempoInfo.textContent = `${bpm} BPM (四分音符の長さ: ${quarterNoteDurationMs.toFixed(0)} ミリ秒)`;
+        // }
+
+        // エラーメッセージを表示する関数
+        function showErrorMessage(message) {
+            errorMessageDisplay.innerHTML = message;
+            errorMessageDisplay.classList.remove('hidden');
+        }
+
+        // エラーメッセージを非表示にする関数
+        function hideErrorMessage() {
+            errorMessageDisplay.classList.add('hidden');
+            errorMessageDisplay.innerHTML = '';
+        }
+
+        // 読み込んだ楽譜を表示する関数
+        function displayLoadedMusic() {
+            if (expectedNotes.length === 0) {
+                loadedMusicNotes.innerHTML = '<p class="text-gray-500 italic">楽譜ファイルを選択してください</p>';
+                updateNoteImage(null); // 楽譜がない場合は画像をリセット
+                return;
+            }
+
+            loadedMusicNotes.innerHTML = expectedNotes.map((item, index) => {
+                const isCurrent = (index === currentExpectedNoteIndex);
+                return `
+                    <div class="loaded-note-item ${isCurrent ? 'current-expected' : ''}">
+                        ${item.note}${item.octave}
+                    </div>
+                `;
+            }).join('');
+
+            // 現在の音符の画像を表示
+            updateNoteImage(expectedNotes[currentExpectedNoteIndex]);
+        }
+
+        // 音符の画像を表示する関数
+        function updateNoteImage(noteObj) {
+            if (noteObj && noteObj.note && noteObj.octave) {
+                const imageName = `${noteObj.note}${noteObj.octave}.jpg`;
+                currentNoteImage.src = imageName;
+                currentNoteImage.alt = `${noteObj.note}${noteObj.octave}の画像`;
+                currentNoteImage.style.display = 'block'; // 画像を表示
+                imagePlaceholder.style.display = 'none'; // プレースホルダーを非表示
+            } else {
+                currentNoteImage.src = '';
+                currentNoteImage.alt = '画像は利用できません';
+                currentNoteImage.style.display = 'none'; // 画像を非表示
+                imagePlaceholder.style.display = 'block'; // プレースホルダーを表示
+            }
+        }
+
+        // テキストファイルから音符をパースする関数
+        function parseNotesFromString(text) {
+            const parsedNotes = [];
+            // 音名 (ドレミファソラシ) + シャープ (# or ＃)? + オクターブ (0-9 or ０-９)
+            // 全角シャープと全角数字に対応
+            // 'ファ' が 'ァ' と読み込まれる問題に対応するため、'ファ' を明示的にパターンに含める
+            const noteRegex = /([ドレミファソラシ][#＃]?|ファ[#＃]?)([0-9０-９])/g;
+            let match;
+
+            while ((match = noteRegex.exec(text)) !== null) {
+                let noteName = match[1]; // 例: "ド", "レ#", "ファ"
+                let octaveStr = match[2]; // 例: "3", "５"
+
+                // 全角シャープを半角に変換
+                noteName = noteName.replace(/＃/g, '#');
+                // 全角数字を半角数字に変換
+                octaveStr = octaveStr.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+                const octave = parseInt(octaveStr, 10);
+
+                parsedNotes.push({ note: noteName, octave: octave });
+            }
+            return parsedNotes;
+        }
+
+        // ファイルを読み込む関数 (自動読み込みと手動選択の両方をサポート)
+        async function loadMusicFile(file = null) {
+            let fileContent = null;
+            let loadedFileName = '';
+
+            if (file) {
+                // 手動ファイル選択の場合
+                loadedFileName = file.name;
+                hideErrorMessage();
+                const reader = new FileReader();
+                fileContent = await new Promise((resolve, reject) => {
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = (e) => reject(reader.error);
+                    // ファイルのエンコーディングを自動判別するため、ArrayBufferとして読み込み、TextDecoderで試行
+                    reader.readAsArrayBuffer(file);
+                }).then(buffer => {
+                    // Shift-JISでデコードを試みる
+                    try {
+                        return new TextDecoder('shift-jis', { fatal: true }).decode(buffer);
+                    } catch (e) {
+                        // Shift-JISで失敗したらUTF-8でデコード
+                        return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+                    }
+                }).catch(error => {
+                    throw new Error(`ファイルのデコードに失敗しました: ${error.message}`);
+                });
+
+            } else {
+                // 自動読み込み (music.txtを試行)
+                loadedFileName = 'music.txt';
+                try {
+                    const response = await fetch('music.txt');
+                    if (!response.ok) {
+                        throw new Error(`ファイルが見つからないか、読み込みに失敗しました (${response.statusText || 'ネットワークエラー'})`);
+                    }
+                    // 自動読み込みの場合も、ArrayBufferとして取得しデコードを試行
+                    const buffer = await response.arrayBuffer();
+                    try {
+                        fileContent = new TextDecoder('shift-jis', { fatal: true }).decode(buffer);
+                    } catch (e) {
+                        fileContent = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+                    }
+                } catch (error) {
+                    console.error('Error loading music.txt automatically:', error);
+                    expectedNotes = [];
+                    showErrorMessage(`music.txtが見つからないか、読み込みに失敗しました: ${error.message}。<br>手動で楽譜ファイルを選択してください。音符の判定は行われません。`);
+                    fileNameDisplay.textContent = 'ファイルが選択されていません';
+                    displayLoadedMusic();
+                    return;
+                }
+            }
+
+            // 共通のパースと表示ロジック
+            try {
+                expectedNotes = parseNotesFromString(fileContent);
+
+                if (expectedNotes.length === 0) {
+                    showErrorMessage(`「${loadedFileName}」に有効な音符がありません。ファイルの内容を確認してください。音符の判定は行われません。`);
+                    statusDisplay.textContent = `「${loadedFileName}」に音符がありません`;
+                } else {
+                    statusDisplay.textContent = `楽譜ファイル「${loadedFileName}」を読み込みました。最初の音: ${expectedNotes[0].note}${expectedNotes[0].octave}`;
+                }
+                currentExpectedNoteIndex = 0;
+                fileNameDisplay.textContent = loadedFileName;
+                displayLoadedMusic();
+            } catch (error) {
+                console.error('Error parsing music file:', error);
+                expectedNotes = [];
+                showErrorMessage(`ファイルの解析に失敗しました: ${error.message}。<br>ファイルの内容が正しい形式か確認してください。音符の判定は行われません。`);
+                displayLoadedMusic();
+            }
+        }
+
+        // アプリをリセットする関数
+        function resetApp() {
+            stopMicrophone(); // マイクと録画を停止
+            currentExpectedNoteIndex = 0; // 楽譜のインデックスをリセット
+            statusDisplay.textContent = '準備完了';
+            noteDisplayArea.classList.remove('correct', 'incorrect');
+            currentNoteDisplay.textContent = '---';
+            currentOctaveDisplay.textContent = '';
+            // デバウンス関連の変数もリセット
+            debouncedNote = { note: null, octave: null };
+            debouncedNoteStartTime = 0;
+            // 楽譜表示をリセット
+            displayLoadedMusic();
+            // 画像表示をリセット
+            updateNoteImage(null);
+            // 録画関連の表示をリセット
+            downloadRecordingButton.style.display = 'none';
+            downloadRecordingButton.href = '#';
+            recordingStatus.textContent = '';
+        }
+
+        // マイクを開始する関数 (Webカメラの取得も含む)
+        async function startMicrophone() {
+            hideErrorMessage();
+            if (expectedNotes.length === 0) {
+                statusDisplay.textContent = '楽譜ファイルが読み込まれていないため、音符の判定は行われません。';
+            }
+
+            currentExpectedNoteIndex = 0;
+            displayLoadedMusic(); // マイク開始時にも表示を更新
+
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+
+                // マイクとWebカメラのストリームを同時に取得
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                webcamStream = stream; // 録画のためにストリームを保存
+
+                // Webカメラの映像を表示
+                webcamVideo.srcObject = webcamStream;
+                webcamVideo.play();
+                webcamVideo.style.display = 'block';
+                recordingStatus.textContent = 'Webカメラ準備完了。';
+
+                // 音声ストリームをアナライザーに接続
+                mediaStreamSource = audioContext.createMediaStreamSource(webcamStream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                analyser.minDecibels = -90;
+                analyser.maxDecibels = -10;
+                analyser.smoothingTimeConstant = 0.85;
+                mediaStreamSource.connect(analyser);
+
+                statusDisplay.textContent = 'マイク入力中...';
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                resetButton.disabled = false;
+
+                // 録画ボタンを有効化、停止・ダウンロードボタンは無効化
+                recordButton.disabled = false;
+                stopRecordButton.disabled = true;
+                downloadRecordingButton.style.display = 'none'; // ダウンロードボタンは非表示に
+                downloadRecordingButton.href = '#'; // リンクをクリア
+
+                // デバウンス用の変数をリセット
+                debouncedNote = { note: null, octave: null };
+                debouncedNoteStartTime = 0;
+
+                noteDisplayArea.classList.remove('correct', 'incorrect');
+                currentNoteDisplay.style.color = '';
+                currentOctaveDisplay.style.color = '';
+
+                processAudio();
+
+            } catch (err) {
+                console.error('マイク/Webカメラアクセスエラー:', err);
+                let userMessage = '<strong>マイクまたはWebカメラを有効にできませんでした。以下の点を確認してください:</strong><br>';
+                if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    userMessage += '<ul><li>1. <strong>物理的なマイク/カメラの接続:</strong> マイクやカメラがPCに正しく接続されているか、または内蔵マイク/カメラが動作しているか確認してください。</li>';
+                    userMessage += '<li>2. <strong>オペレーティングシステム（OS）のプライバシー設定:</strong> OS（Windows、macOSなど）の「プライバシー設定」または「セキュリティとプライバシー」で、お使いのブラウザ（例: Chrome, Firefox, Edge）がマイクとカメラにアクセスすることを許可しているか確認してください。</li>';
+                    userMessage += '<li>3. <strong>ブラウザのサイト設定:</strong> ブラウザのアドレスバーの左側にある鍵アイコンや情報アイコンをクリックし、このサイトのマイクとカメラへのアクセスが「許可」になっているか確認してください。以前に「ブロック」した可能性があります。</li>';
+                    userMessage += '<li>4. <strong>ブラウザの再起動:</strong> ブラウザを完全に閉じて再起動してみてください。</li>';
+                    userMessage += '<li>5. <strong>別のブラウザで試す:</strong> 別のブラウザ（例: Chromeでうまくいかない場合、FirefoxやEdgeを試す）で動作するか確認してください。</li></ul>';
+                } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    userMessage += '<strong>マイクまたはWebカメラへのアクセスが拒否されました。以下の点を確認してください:</strong><br>';
+                    userMessage += '<ul><li>1. ブラウザのポップアップでマイク/カメラ使用の許可を求められた際に「許可」を選択したか。</li>';
+                    userMessage += '<li>2. ブラウザの設定で、このサイトのマイク/カメラアクセスがブロックされていないか。</li>';
+                    userMessage += '<li>3. このページが安全な接続 (HTTPS://...) で提供されているか。</li></ul>';
+                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                    userMessage += '<strong>マイクまたはWebカメラが使用中です。</strong><br>他のアプリケーション（ビデオ会議ツールなど）がマイクやカメラを使用していないか確認してください。';
+                } else if (err.name === 'OverconstrainedError') {
+                    userMessage += '<strong>指定された制約を満たすマイク/カメラが見つかりませんでした。</strong><br>特定の種類のマイク/カメラを要求している場合に発生することがあります。';
+                } else if (err.name === 'SecurityError') {
+                    userMessage += '<strong>セキュリティ上の理由によりマイク/カメラにアクセスできません。</strong><br>このページが安全な接続 (HTTPS://...) で提供されているか。';
+                } else {
+                    userMessage += `予期せぬエラーが発生しました。エラー詳細: ${err.message}`;
+                }
+                showErrorMessage(userMessage);
+                statusDisplay.textContent = 'エラー';
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                resetButton.disabled = true;
+                recordButton.disabled = true;
+                stopRecordButton.disabled = true;
+                downloadRecordingButton.style.display = 'none';
+                webcamVideo.style.display = 'none'; // エラー時はWebcam非表示
+                recordingStatus.textContent = '';
+            }
+        }
+
+        // 音声データを処理するループ
+        function processAudio() {
+            const bufferLength = analyser.frequencyBinCount; // Corrected typo: frequencyBinBinCount -> frequencyBinCount
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            let maxAmplitude = 0;
+            let maxFrequencyIndex = -1;
+            const MIN_AMPLITUDE_THRESHOLD = 120;
+
+            for (let i = 0; i < bufferLength; i++) {
+                if (dataArray[i] > maxAmplitude) {
+                    maxAmplitude = dataArray[i];
+                    maxFrequencyIndex = i;
+                }
+            }
+
+            if (maxFrequencyIndex !== -1 && maxAmplitude > MIN_AMPLITUDE_THRESHOLD) {
+                const sampleRate = audioContext.sampleRate;
+                const detectedFrequency = maxFrequencyIndex * (sampleRate / analyser.fftSize);
+                const { note, octave } = getNoteFromFrequency(detectedFrequency);
+
+                // ライブ表示は常に最新の検出音を表示
+                currentNoteDisplay.textContent = note;
+                currentOctaveDisplay.textContent = octave;
+                statusDisplay.textContent = `マイク入力中... (検出周波数: ${detectedFrequency.toFixed(2)} Hz)`;
+
+                // --- デバウンスロジック開始 ---
+                if (debouncedNote.note === null || note !== debouncedNote.note || octave !== debouncedNote.octave) {
+                    // 新しい可能性のある音階が検出された場合、デバウンスタイマーをリセット
+                    debouncedNote = { note, octave };
+                    debouncedNoteStartTime = performance.now();
+                } else {
+                    // 同じ可能性のある音階が継続している場合、安定性をチェック
+                    if (performance.now() - debouncedNoteStartTime >= DEBOUNCE_THRESHOLD_MS) {
+                        // 音階が十分安定していると判断された場合
+                        if (debouncedNote.note !== currentStableNote.note || debouncedNote.octave !== currentStableNote.octave) {
+                            // これは真に新しい安定した音階である
+                            currentStableNote = { note: debouncedNote.note, octave: debouncedNote.octave };
+                            
+                            // ライブ表示の色を更新（楽譜がある場合のみ）
+                            if (expectedNotes.length > 0) {
+                                const expectedNoteObj = expectedNotes[currentExpectedNoteIndex];
+                                if (currentStableNote.note === expectedNoteObj.note && currentStableNote.octave === expectedNoteObj.octave) {
+                                    noteDisplayArea.classList.remove('incorrect');
+                                    noteDisplayArea.classList.add('correct');
+                                    // 正しい場合のみ、期待される音符のインデックスを進める
+                                    currentExpectedNoteIndex = (currentExpectedNoteIndex + 1) % expectedNotes.length;
+                                    displayLoadedMusic(); // 読み込んだ楽譜表示を更新して、次の期待される音符を強調
+                                } else {
+                                    noteDisplayArea.classList.remove('correct');
+                                    noteDisplayArea.classList.add('incorrect');
+                                }
+                            } else {
+                                // 楽譜がない場合は色をリセット
+                                noteDisplayArea.classList.remove('correct', 'incorrect');
+                            }
+                        }
+                    }
+                }
+                // --- デバウンスロジック終了 ---
+
+            } else { // 有意な音が検出されない場合（無音状態）
+                // デバウンス追跡もリセット
+                debouncedNote = { note: null, octave: null };
+                debouncedNoteStartTime = 0;
+                currentStableNote = { note: null, octave: null }; // 無音になったら安定音もリセット
+
+                // ライブ表示をクリア
+                currentNoteDisplay.textContent = "---";
+                currentOctaveDisplay.textContent = "";
+                statusDisplay.textContent = 'マイク入力中... (音を待機中)';
+                noteDisplayArea.classList.remove('correct', 'incorrect'); // 無音時は色をリセット
+            }
+
+            animationFrameId = requestAnimationFrame(processAudio);
+        }
+
+        // マイクとWebカメラを停止する関数
+        function stopMicrophone() {
+            // 録画がアクティブな場合は停止
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+
+            // Webカメラのストリームトラックを停止
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+            }
+            webcamVideo.srcObject = null; // ビデオ表示を停止
+            webcamVideo.style.display = 'none'; // ビデオ要素を非表示
+            recordingStatus.textContent = ''; // 録画ステータスをクリア
+
+            if (mediaStreamSource) {
+                mediaStreamSource.disconnect();
+                mediaStreamSource = null;
+            }
+            if (audioContext) {
+                if (audioContext.state !== 'closed') {
+                    audioContext.close().then(() => {
+                        audioContext = null;
+                        console.log('AudioContext closed');
+                    });
+                }
+            }
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+
+            statusDisplay.textContent = '停止しました';
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            resetButton.disabled = false; // 停止後はリセット可能
+
+            // 録画関連ボタンを無効化
+            recordButton.disabled = true;
+            stopRecordButton.disabled = true;
+            // downloadRecordingButton の表示は mediaRecorder.onstop で制御される
+
+            hideErrorMessage();
+            currentNoteDisplay.textContent = "---";
+            currentOctaveDisplay.textContent = "";
+            noteDisplayArea.classList.remove('correct', 'incorrect');
+            
+            // デバウンス用の変数をリセット
+            debouncedNote = { note: null, octave: null };
+            debouncedNoteStartTime = 0;
+            currentStableNote = { note: null, octave: null }; // 停止時も安定音をリセット
+            displayLoadedMusic();
+        }
+
+        // 録画開始関数
+        function startRecording() {
+            recordedChunks = [];
+            // MediaRecorderのオプションを設定 (ビデオとオーディオを含むWebM形式)
+            mediaRecorder = new MediaRecorder(webcamStream, { mimeType: 'video/webm; codecs=vp8,opus' });
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                downloadRecordingButton.href = url;
+                downloadRecordingButton.download = `recording-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+                downloadRecordingButton.style.display = 'inline-flex'; // ダウンロードボタンを表示
+                recordingStatus.textContent = '録画停止。ダウンロード可能。';
+                console.log('Recording stopped. Download link available.');
+            };
+
+            mediaRecorder.start();
+            recordButton.disabled = true;
+            stopRecordButton.disabled = false;
+            downloadRecordingButton.style.display = 'none'; // 録画中はダウンロードボタンを非表示に
+            recordingStatus.textContent = '録画中...';
+            console.log('Recording started.');
+        }
+
+        // 録画停止関数
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            recordButton.disabled = false; // 新しい録画を開始可能にする
+            stopRecordButton.disabled = true;
+            // recordingStatus は mediaRecorder.onstop で更新される
+            console.log('Recording manually stopped.');
+        }
+
+        // イベントリスナー
+        startButton.addEventListener('click', startMicrophone);
+        stopButton.addEventListener('click', stopMicrophone);
+        resetButton.addEventListener('click', resetApp);
+        // tempoSelect.addEventListener('change', updateTempoInfo); // Removed
+        musicFileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            loadMusicFile(file);
+        });
+
+        // 新しい録画関連ボタンのイベントリスナー
+        recordButton.addEventListener('click', startRecording);
+        stopRecordButton.addEventListener('click', stopRecording);
+
+        // ページロード時に自動的にmusic.txtを読み込み、テンポ情報を初期表示
+        window.onload = async () => {
+            await loadMusicFile(); // music.txtの自動読み込みを試行
+            // updateTempoInfo(); // Removed
+            displayLoadedMusic(); // 初期状態ではファイル選択を促すメッセージを表示
+            resetButton.disabled = true; // 初期状態ではリセットボタンを無効化
+            recordButton.disabled = true; // 初期状態では録画ボタンも無効化
+            stopRecordButton.disabled = true; // 初期状態では停止録画ボタンも無効化
+        };
+    </script>
+</body>
+</html>
