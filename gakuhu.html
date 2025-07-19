@@ -111,12 +111,10 @@
             margin-top: 10px;
         }
         /* ライブ表示の音符の色を動的に変更するためのクラス */
-        .note-display-area.correct .note-text,
-        .note-display-area.correct .octave {
+        .note-display-area.correct {
             color: #10B981; /* Tailwind green-500 */
         }
-        .note-display-area.incorrect .note-text,
-        .note-display-area.incorrect .octave {
+        .note-display-area.incorrect {
             color: #EF4444; /* Tailwind red-500 */
         }
 
@@ -255,8 +253,8 @@
 
         /* ファイル選択エリアのスタイル */
         .file-input-group {
-            margin-top: 15px;
-            margin-bottom: 15px;
+            margin-top: 0; /* 親のtop-controls-wrapperのgapで調整 */
+            margin-bottom: 0; /* 親のtop-controls-wrapperのgapで調整 */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -430,6 +428,11 @@
         // 履歴への重複記録を防ぐための変数（同じ音符と長さが連続して記録されるのを防ぐ）
         let lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
 
+        // デバウンス処理のための変数
+        let debouncedNote = { note: null, octave: null };
+        let debouncedNoteStartTime = 0;
+        const DEBOUNCE_THRESHOLD_MS = 100; // 音階が安定していると見なす最小時間 (ミリ秒)
+
         // 期待される音符のシーケンス
         let expectedNotes = []; // Array of { note: string, octave: number }
         let currentExpectedNoteIndex = 0; // 現在期待されている音符のインデックス
@@ -526,55 +529,68 @@
             return parsedNotes;
         }
 
-        // 選択されたファイルを読み込む関数
-        async function loadMusicFile(file) {
-            if (!file) {
-                expectedNotes = [];
-                showErrorMessage('ファイルが選択されていません。');
-                displayLoadedMusic();
-                return;
+        // 選択されたファイルを読み込む関数 (自動読み込みと手動選択の両方をサポート)
+        async function loadMusicFile(file = null) {
+            let fileContent = null;
+            let loadedFileName = '';
+
+            if (file) {
+                // 手動ファイル選択の場合
+                loadedFileName = file.name;
+                hideErrorMessage();
+                const reader = new FileReader();
+                fileContent = await new Promise((resolve, reject) => {
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = (e) => reject(reader.error);
+                    reader.readAsText(file); // UTF-8として読み込む
+                });
+            } else {
+                // 自動読み込み (music.txtを試行)
+                loadedFileName = 'music.txt';
+                try {
+                    const response = await fetch('music.txt');
+                    if (!response.ok) {
+                        // ファイルが見つからない場合や読み込みエラーの場合
+                        throw new Error(`ファイルが見つからないか、読み込みに失敗しました (${response.statusText || 'ネットワークエラー'})`);
+                    }
+                    fileContent = await response.text();
+                } catch (error) {
+                    console.error('Error loading music.txt automatically:', error);
+                    expectedNotes = []; // 期待される音符を空にする
+                    showErrorMessage(`music.txtが見つからないか、読み込みに失敗しました: ${error.message}。<br>手動で楽譜ファイルを選択してください。音符の判定は行われません。`);
+                    fileNameDisplay.textContent = 'ファイルが選択されていません'; // ファイル名表示をリセット
+                    displayLoadedMusic(); // 読み込んだ楽譜表示を更新して、ファイル選択を促すメッセージを表示
+                    return; // 自動読み込みが失敗した場合は、これ以上処理を進めない
+                }
             }
 
-            fileNameDisplay.textContent = file.name;
-            hideErrorMessage();
+            // 共通のパースと表示ロジック
+            try {
+                expectedNotes = parseNotesFromString(fileContent);
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const text = e.target.result;
-                    expectedNotes = parseNotesFromString(text);
-
-                    if (expectedNotes.length === 0) {
-                        showErrorMessage('選択されたファイルに有効な音符がありません。ファイルの内容を確認してください。音符の判定は行われません。');
-                        statusDisplay.textContent = '楽譜に音符がありません';
-                    } else {
-                        statusDisplay.textContent = `楽譜ファイル「${file.name}」を読み込みました。最初の音: ${expectedNotes[0].note}${expectedNotes[0].octave}`;
-                    }
-                    currentExpectedNoteIndex = 0;
-                    displayLoadedMusic();
-                } catch (error) {
-                    console.error('Error parsing music file:', error);
-                    expectedNotes = [];
-                    showErrorMessage(`ファイルの解析に失敗しました: ${error.message}。<br>ファイルの内容が正しい形式か確認してください。音符の判定は行われません。`);
-                    displayLoadedMusic();
+                if (expectedNotes.length === 0) {
+                    showErrorMessage(`「${loadedFileName}」に有効な音符がありません。ファイルの内容を確認してください。音符の判定は行われません。`);
+                    statusDisplay.textContent = `「${loadedFileName}」に音符がありません`;
+                } else {
+                    statusDisplay.textContent = `楽譜ファイル「${loadedFileName}」を読み込みました。最初の音: ${expectedNotes[0].note}${expectedNotes[0].octave}`;
                 }
-            };
-            reader.onerror = (e) => {
-                console.error('Error reading file:', reader.error);
+                currentExpectedNoteIndex = 0; // ファイル読み込み時にインデックスをリセット
+                fileNameDisplay.textContent = loadedFileName; // ファイル名表示を更新
+                displayLoadedMusic(); // 読み込み後、楽譜を表示
+            } catch (error) {
+                console.error('Error parsing music file:', error);
                 expectedNotes = [];
-                showErrorMessage(`ファイルの読み込みに失敗しました: ${reader.error.name}。<br>ファイルが破損しているか、アクセス権限がない可能性があります。`);
+                showErrorMessage(`ファイルの解析に失敗しました: ${error.message}。<br>ファイルの内容が正しい形式か確認してください。音符の判定は行われません。`);
                 displayLoadedMusic();
-            };
-            // UTF-8として読み込む (Shift-JISは自動判別されないため、ユーザーがShift-JISで保存している場合は文字化けの可能性あり)
-            reader.readAsText(file); 
+            }
         }
 
         // マイクを開始する関数
         async function startMicrophone() {
             hideErrorMessage();
+            // 楽譜ファイルが読み込まれていない場合でも、アプリは動作させる
             if (expectedNotes.length === 0) {
-                showErrorMessage('楽譜ファイルが読み込まれていません。ファイルを選択して読み込んでください。');
-                return;
+                statusDisplay.textContent = '楽譜ファイルが読み込まれていないため、音符の判定は行われません。';
             }
 
             currentExpectedNoteIndex = 0;
@@ -603,9 +619,12 @@
                 startButton.disabled = true;
                 stopButton.disabled = false;
 
+                // マイク開始時に履歴記録およびデバウンス用の変数をリセット
                 currentStableNote = { note: null, octave: null };
                 lastStableNoteTime = performance.now();
                 lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
+                debouncedNote = { note: null, octave: null };
+                debouncedNoteStartTime = 0;
 
                 noteDisplayArea.classList.remove('correct', 'incorrect');
                 currentNoteDisplay.style.color = '';
@@ -665,87 +684,102 @@
                 const detectedFrequency = maxFrequencyIndex * (sampleRate / analyser.fftSize);
                 const { note, octave } = getNoteFromFrequency(detectedFrequency);
 
+                // ライブ表示は常に最新の検出音を表示
                 currentNoteDisplay.textContent = note;
                 currentOctaveDisplay.textContent = octave;
                 statusDisplay.textContent = `マイク入力中... (検出周波数: ${detectedFrequency.toFixed(2)} Hz)`;
 
-                let isCurrentNoteCorrect = null;
-                if (expectedNotes.length > 0) {
-                    const expectedNoteObj = expectedNotes[currentExpectedNoteIndex];
-                    if (note === expectedNoteObj.note && octave === expectedNoteObj.octave) {
-                        noteDisplayArea.classList.remove('incorrect');
-                        noteDisplayArea.classList.add('correct');
-                        isCurrentNoteCorrect = true;
-                    } else {
-                        noteDisplayArea.classList.remove('correct');
-                        noteDisplayArea.classList.add('incorrect');
-                        isCurrentNoteCorrect = false;
-                    }
+                // --- デバウンスロジック開始 ---
+                if (debouncedNote.note === null || note !== debouncedNote.note || octave !== debouncedNote.octave) {
+                    // 新しい可能性のある音階が検出された場合、デバウンスタイマーをリセット
+                    debouncedNote = { note, octave };
+                    debouncedNoteStartTime = performance.now();
                 } else {
-                    noteDisplayArea.classList.remove('correct', 'incorrect');
-                    currentNoteDisplay.style.color = '';
-                    currentOctaveDisplay.style.color = '';
-                    isCurrentNoteCorrect = null;
-                }
+                    // 同じ可能性のある音階が継続している場合、安定性をチェック
+                    if (performance.now() - debouncedNoteStartTime >= DEBOUNCE_THRESHOLD_MS) {
+                        // 音階が十分安定していると判断された場合
+                        if (currentStableNote.note === null || debouncedNote.note !== currentStableNote.note || debouncedNote.octave !== currentStableNote.octave) {
+                            // これは真に新しい安定した音階である
+                            // まず、前の安定した音階が存在すれば、その期間を確定して履歴に追加
+                            if (currentStableNote.note !== null) {
+                                const durationMs = performance.now() - lastStableNoteTime;
+                                const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
+                                
+                                let isCorrect = null;
+                                if (expectedNotes.length > 0) {
+                                    const expectedNoteObj = expectedNotes[currentExpectedNoteIndex];
+                                    isCorrect = (currentStableNote.note === expectedNoteObj.note && currentStableNote.octave === expectedNoteObj.octave);
+                                }
 
-                if (currentStableNote.note === null || note !== currentStableNote.note || octave !== currentStableNote.octave) {
-                    if (currentStableNote.note !== null) {
-                        const durationMs = performance.now() - lastStableNoteTime;
-                        const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
-                        
-                        const newNoteEntry = {
-                            note: currentStableNote.note,
-                            octave: currentStableNote.octave,
-                            durationText: noteDurationText,
-                            isCorrect: isCurrentNoteCorrect
-                        };
+                                const newNoteEntry = {
+                                    note: currentStableNote.note,
+                                    octave: currentStableNote.octave,
+                                    durationText: noteDurationText,
+                                    isCorrect: isCorrect
+                                };
 
-                        if (newNoteEntry.note !== lastRecordedNoteInHistory.note ||
-                            newNoteEntry.octave !== lastRecordedNoteInHistory.octave ||
-                            newNoteEntry.durationText !== lastRecordedNoteInHistory.durationText ||
-                            newNoteEntry.isCorrect !== lastRecordedNoteInHistory.isCorrect) {
-                            
-                            detectedNotesHistory.unshift(newNoteEntry);
-                            if (detectedNotesHistory.length > MAX_HISTORY_ITEMS) {
-                                detectedNotesHistory.pop();
+                                // 履歴に同じ音符と長さの組み合わせが連続しないようにチェック
+                                if (newNoteEntry.note !== lastRecordedNoteInHistory.note ||
+                                    newNoteEntry.octave !== lastRecordedNoteInHistory.octave ||
+                                    newNoteEntry.durationText !== lastRecordedNoteInHistory.durationText ||
+                                    newNoteEntry.isCorrect !== lastRecordedNoteInHistory.isCorrect) {
+                                    
+                                    detectedNotesHistory.unshift(newNoteEntry);
+                                    if (detectedNotesHistory.length > MAX_HISTORY_ITEMS) {
+                                        detectedNotesHistory.pop();
+                                    }
+                                    historyGrid.innerHTML = detectedNotesHistory.map(item => `
+                                        <div class="history-item ${item.isCorrect === true ? 'correct-note' : (item.isCorrect === false ? 'incorrect-note' : '')}">
+                                            <p class="note-text">${item.note}${item.octave}</p>
+                                            <p class="duration-text">${item.durationText}</p>
+                                        </div>
+                                    `).join('');
+                                    lastRecordedNoteInHistory = newNoteEntry;
+                                }
                             }
-                            historyGrid.innerHTML = detectedNotesHistory.map(item => `
-                                <div class="history-item ${item.isCorrect === true ? 'correct-note' : (item.isCorrect === false ? 'incorrect-note' : '')}">
-                                    <p class="note-text">${item.note}${item.octave}</p>
-                                    <p class="duration-text">${item.durationText}</p>
-                                </div>
-                            `).join('');
-                            lastRecordedNoteInHistory = newNoteEntry;
+                            // 新しい安定した音階を設定
+                            currentStableNote = { note: debouncedNote.note, octave: debouncedNote.octave };
+                            lastStableNoteTime = performance.now();
+
+                            // ライブ表示の色を更新（楽譜がある場合のみ）
+                            if (expectedNotes.length > 0) {
+                                const expectedNoteObj = expectedNotes[currentExpectedNoteIndex];
+                                if (currentStableNote.note === expectedNoteObj.note && currentStableNote.octave === expectedNoteObj.octave) {
+                                    noteDisplayArea.classList.remove('incorrect');
+                                    noteDisplayArea.classList.add('correct');
+                                    // 正しい場合のみ、期待される音符のインデックスを進める
+                                    currentExpectedNoteIndex = (currentExpectedNoteIndex + 1) % expectedNotes.length;
+                                    displayLoadedMusic(); // 読み込んだ楽譜表示を更新して、次の期待される音符を強調
+                                } else {
+                                    noteDisplayArea.classList.remove('correct');
+                                    noteDisplayArea.classList.add('incorrect');
+                                }
+                            } else {
+                                // 楽譜がない場合は色をリセット
+                                noteDisplayArea.classList.remove('correct', 'incorrect');
+                            }
                         }
                     }
-                    currentStableNote = { note: note, octave: octave };
-                    lastStableNoteTime = performance.now();
-
-                    if (isCurrentNoteCorrect === true && expectedNotes.length > 0) {
-                        currentExpectedNoteIndex = (currentExpectedNoteIndex + 1) % expectedNotes.length;
-                        displayLoadedMusic();
-                    }
                 }
-            } else {
+                // --- デバウンスロジック終了 ---
+
+            } else { // 有意な音が検出されない場合（無音状態）
+                // 最後に安定していた音階があれば、その期間を確定して履歴に追加
                 if (currentStableNote.note !== null) {
                     const durationMs = performance.now() - lastStableNoteTime;
                     const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
 
-                    let isLastNoteCorrect = null;
+                    let isCorrect = null;
                     if (expectedNotes.length > 0) {
-                        const expectedNoteObj = expectedNotes[currentExpectedNoteIndex];
-                        if (currentStableNote.note === expectedNoteObj.note && currentStableNote.octave === expectedNoteObj.octave) {
-                            isLastNoteCorrect = true;
-                        } else {
-                            isLastNoteCorrect = false;
-                        }
+                        const expectedNoteObj = expectedNotes[currentExpectedNoteIndex]; // 無音になる直前のcurrentStableNoteが、現在のexpectedNoteと一致するかを判定
+                        isCorrect = (currentStableNote.note === expectedNoteObj.note && currentStableNote.octave === expectedNoteObj.octave);
                     }
                     
                     const newNoteEntry = {
                         note: currentStableNote.note,
                         octave: currentStableNote.octave,
                         durationText: noteDurationText,
-                        isCorrect: isLastNoteCorrect
+                        isCorrect: isCorrect
                     };
 
                     if (newNoteEntry.note !== lastRecordedNoteInHistory.note ||
@@ -765,13 +799,19 @@
                         `).join('');
                         lastRecordedNoteInHistory = newNoteEntry;
                     }
+                    // 安定した音階の追跡をリセット
                     currentStableNote = { note: null, octave: null };
                     lastStableNoteTime = 0;
                 }
+                // デバウンス追跡もリセット
+                debouncedNote = { note: null, octave: null };
+                debouncedNoteStartTime = 0;
+
+                // ライブ表示をクリア
                 currentNoteDisplay.textContent = "---";
                 currentOctaveDisplay.textContent = "";
                 statusDisplay.textContent = 'マイク入力中... (音を待機中)';
-                noteDisplayArea.classList.remove('correct', 'incorrect');
+                noteDisplayArea.classList.remove('correct', 'incorrect'); // 無音時は色をリセット
             }
 
             animationFrameId = requestAnimationFrame(processAudio);
@@ -805,6 +845,7 @@
             currentOctaveDisplay.textContent = "";
             noteDisplayArea.classList.remove('correct', 'incorrect');
             
+            // 停止時に現在の音符が確定していれば履歴に追加
             if (currentStableNote.note !== null) {
                 const durationMs = performance.now() - lastStableNoteTime;
                 const noteDurationText = getNoteDurationText(durationMs, parseInt(tempoSelect.value));
@@ -845,9 +886,12 @@
                 }
             }
 
+            // 停止時に履歴記録およびデバウンス用の変数をリセット
             currentStableNote = { note: null, octave: null };
             lastStableNoteTime = 0;
             lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
+            debouncedNote = { note: null, octave: null };
+            debouncedNoteStartTime = 0;
             displayLoadedMusic();
         }
 
@@ -861,6 +905,7 @@
             historyGrid.innerHTML = '';
             lastRecordedNoteInHistory = { note: null, octave: null, durationText: null, isCorrect: null };
             currentExpectedNoteIndex = 0;
+            // 楽譜が読み込まれていれば、最初の音を表示
             statusDisplay.textContent = `楽譜ファイルの状態: ${expectedNotes[0] ? expectedNotes[0].note + expectedNotes[0].octave + 'から開始' : 'なし'}`;
             noteDisplayArea.classList.remove('correct', 'incorrect');
             currentNoteDisplay.style.color = '';
@@ -874,10 +919,13 @@
             loadMusicFile(file);
         });
 
-        // ページロード時にテンポ情報を初期表示
-        updateTempoInfo();
-        // 初期状態ではファイル選択を促すメッセージを表示
-        displayLoadedMusic();
+        // ページロード時に自動的にmusic.txtを読み込み、テンポ情報を初期表示
+        window.onload = async () => {
+            await loadMusicFile(); // music.txtの自動読み込みを試行
+            updateTempoInfo();
+            // 初期状態ではファイル選択を促すメッセージを表示
+            displayLoadedMusic();
+        };
     </script>
 </body>
 </html>
