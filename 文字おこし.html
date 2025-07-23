@@ -17,7 +17,7 @@
 <body>
     <div id="root" class="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-inter">
         <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl">
-            <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">リアルタイム音声文字おこし</h1>
+            <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">リアルタイム音声文字おこし２</h1>
 
             <div id="browser-support-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mb-4 text-center"></div>
             <div id="error-message" class="hidden bg-orange-100 border border-orange-400 text-orange-700 px-4 py-3 rounded-xl mb-4 text-center"></div>
@@ -78,7 +78,7 @@
         // Thresholds for speaker differentiation
         const PAUSE_THRESHOLD_MS = 1500; // 1.5 seconds of silence
         const PITCH_THRESHOLD_DIFF = 0.10; // Relative change in dominant frequency (0.0 to 1.0) - Adjusted for stricter detection
-        const UTTERANCE_DURATION_THRESHOLD_MS = 1000; // Changed to 1 second
+        const UTTERANCE_DURATION_THRESHOLD_MS = 500; // Changed to 0.5 seconds for debugging
 
         // Global variables for state management
         let isListening = false;
@@ -86,8 +86,8 @@
         let errorMessage = '';
         let browserSupport = true;
         let micActivity = 0;
-        let currentSpeakerAlphabet = 'A'; // Internal label, not displayed
         let manualStop = false; // Flag to track if stop was user-initiated
+        let recognitionHealthCheckInterval = null; // New: Interval ID for health check
 
         // Web Speech API and Web Audio API instances
         let recognition = null;
@@ -105,7 +105,7 @@
 
         // State for speaker differentiation logic
         let lastUtteranceEndTime = 0;
-        let speakerProfiles = []; // Stores { id: 'A', colorIndex: 0, avgPitch: 0.5 } for each detected speaker
+        let speakerProfiles = []; // Stores { colorIndex: 0, avgPitch: 0.5 } for each detected speaker
         let currentUtteranceStartTime = 0;
         let currentTranscript = ''; // For interim results display
 
@@ -323,6 +323,7 @@
                 isListening = true;
                 currentUtteranceStartTime = performance.now(); // Mark start of current speech segment
                 updateUI();
+                startRecognitionHealthCheck(); // Start health check
             };
 
             recognition.onresult = (event) => {
@@ -381,36 +382,29 @@
                     if (speakerProfiles.length === 0) { // First utterance ever
                         shouldAssignNewSpeaker = true;
                     } else {
-                        // If there's a significant pause AND the best match's pitch difference is still too high, it's a new speaker.
-                        // OR if there's NO significant pause, BUT the pitch difference to the best match is too high, it's a new speaker.
-                        if (pauseDuration > PAUSE_THRESHOLD_MS) {
-                            if (bestMatchPitchDiff > PITCH_THRESHOLD_DIFF) {
-                                shouldAssignNewSpeaker = true;
-                            }
-                        } else { // Short pause or no pause
-                            if (bestMatchPitchDiff > PITCH_THRESHOLD_DIFF) {
-                                shouldAssignNewSpeaker = true;
-                            }
+                        // If the best match's pitch difference is too high, it's a new speaker.
+                        if (bestMatchPitchDiff > PITCH_THRESHOLD_DIFF) {
+                            shouldAssignNewSpeaker = true;
+                        } else if (pauseDuration > PAUSE_THRESHOLD_MS) {
+                            // If pitch is similar, but there's a long pause, it *might* be a new speaker.
+                            // This makes it stricter about keeping the same speaker across long pauses.
+                            shouldAssignNewSpeaker = true;
                         }
                     }
 
                     if (shouldAssignNewSpeaker) {
                         // Create a new speaker profile
                         const newColorIndex = (speakerProfiles.length > 0) ? (speakerProfiles[speakerProfiles.length - 1].colorIndex + 1) % SPEAKER_COLORS.length : 0;
-                        const newSpeakerId = String.fromCharCode(65 + newColorIndex); // 'A' is ASCII 65
                         speakerProfiles.push({
-                            id: newSpeakerId,
+                            id: String.fromCharCode(65 + newColorIndex), // Internal ID
                             colorIndex: newColorIndex,
                             avgPitch: currentPitchProxy
                         });
-                        currentSpeakerAlphabet = newSpeakerId;
                         // Set speakerColorIndex to the new speaker's color
                         speakerColorIndex = newColorIndex;
                     } else {
                         // Assign to the best matched existing speaker
-                        // Update the speakerColorIndex and currentSpeakerAlphabet to match the assigned speaker
                         speakerColorIndex = speakerProfiles[assignedSpeakerIndex].colorIndex;
-                        currentSpeakerAlphabet = speakerProfiles[assignedSpeakerIndex].id;
                         // Update the average pitch of the assigned speaker (weighted average for smoother adaptation)
                         speakerProfiles[assignedSpeakerIndex].avgPitch =
                             (speakerProfiles[assignedSpeakerIndex].avgPitch * 0.8) + (currentPitchProxy * 0.2);
@@ -419,7 +413,7 @@
                     transcripts.push({
                         text: final,
                         color: SPEAKER_COLORS[speakerColorIndex],
-                        speakerLabel: currentSpeakerAlphabet, // Store speaker label internally for email/copy
+                        speakerLabel: speakerProfiles[speakerColorIndex].id, // Store internal ID for email/copy
                         timestamp: utteranceEndTime,
                         duration: utteranceDuration,
                         pitchProxy: currentPitchProxy,
@@ -434,9 +428,13 @@
 
             recognition.onend = () => {
                 console.log('音声認識が終了しました。');
+                clearInterval(recognitionHealthCheckInterval); // Clear health check
                 if (isListening && !manualStop) { // If listening and not manually stopped, restart
                     console.log('予期せぬ終了、再起動します。');
-                    recognition.start();
+                    // Re-initialize and restart the recognition
+                    // This creates a new SpeechRecognition instance to avoid potential issues
+                    initSpeechRecognition();
+                    startListeningInternal(); // Call internal start logic
                 } else {
                     isListening = false; // Ensure isListening is false if it was a manual stop or truly ended
                     updateUI();
@@ -447,6 +445,7 @@
                 console.error('音声認識エラー:', event.error);
                 errorMessage = `音声認識エラー: ${event.error}。マイクが正しく接続されているか、ブラウザの設定を確認してください。`;
                 updateUI(); // Update UI with error message
+                clearInterval(recognitionHealthCheckInterval); // Clear health check
 
                 // Attempt to restart unless manually stopped
                 if (!manualStop) {
@@ -454,9 +453,9 @@
                     // Add a small delay before restarting to prevent rapid error loops
                     setTimeout(() => {
                         try {
-                            recognition.start();
-                            isListening = true; // Set back to true if restart is attempted
-                            updateUI();
+                            // Re-initialize and restart the recognition
+                            initSpeechRecognition(); // Re-initialize recognition to get a fresh instance
+                            startListeningInternal(); // Call internal start logic
                         } catch (e) {
                             console.error('再起動に失敗しました:', e);
                             errorMessage = '音声認識の再起動に失敗しました。';
@@ -489,26 +488,48 @@
             };
         }
 
-        // Start listening function
-        function startListening() {
-            if (!browserSupport) return;
-            errorMessage = '';
-            transcripts = [];
-            currentTranscript = '';
-            lastUtteranceEndTime = 0;
-            speakerProfiles = []; // Reset speaker profiles
-            speakerColorIndex = 0; // Reset speaker color index
-            currentSpeakerAlphabet = 'A'; // Reset speaker label to 'A'
-            currentUtteranceStartTime = performance.now();
-            manualStop = false; // Reset manualStop flag
-            audioBlob = null; // Clear previous audio blob
-            audioChunks = []; // Clear previous audio chunks
-            updateUI(); // Initial UI update
+        // New function to start the recognition health check
+        function startRecognitionHealthCheck() {
+            if (recognitionHealthCheckInterval) {
+                clearInterval(recognitionHealthCheckInterval);
+            }
+            recognitionHealthCheckInterval = setInterval(() => {
+                // Check if recognition is supposed to be listening but isn't
+                if (isListening && !manualStop && recognition && !recognition.recognizing) {
+                    console.log('認識が停止していることを検出しました。再起動します。');
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error('ヘルスチェックからの認識再起動に失敗しました:', e);
+                        // If restart fails, stop the health check and show error
+                        clearInterval(recognitionHealthCheckInterval);
+                        errorMessage = '音声認識の再起動に失敗しました。';
+                        isListening = false;
+                        updateUI();
+                    }
+                }
+            }, 2000); // Check every 2 seconds
+        }
 
+        // Internal function to start listening (used by public start and restart logic)
+        function startListeningInternal() {
             try {
-                recognition.start();
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        console.log('AudioContext resumed successfully.');
+                        recognition.start();
+                    }).catch(e => {
+                        console.error('AudioContext resume failed:', e);
+                        errorMessage = 'マイクの初期化に失敗しました。ページをリロードしてください。';
+                        isListening = false;
+                        updateUI();
+                    });
+                } else {
+                    recognition.start();
+                }
+
                 if (mediaRecorder && mediaRecorder.state === 'inactive') {
-                    mediaRecorder.start(); // Start audio recording
+                    mediaRecorder.start();
                     console.log('MediaRecorder started.');
                 }
                 isListening = true;
@@ -521,10 +542,44 @@
             }
         }
 
+        // Public start listening function
+        function startListening() {
+            if (!browserSupport) return;
+            errorMessage = '';
+            transcripts = [];
+            currentTranscript = '';
+            lastUtteranceEndTime = 0;
+            speakerProfiles = []; // Reset speaker profiles
+            speakerColorIndex = 0; // Reset speaker color index
+            // currentSpeakerAlphabet = 'A'; // No longer used for display
+            currentUtteranceStartTime = performance.now();
+            manualStop = false; // Reset manualStop flag
+            audioBlob = null; // Clear previous audio blob
+            audioChunks = []; // Clear previous audio chunks
+            updateUI(); // Initial UI update
+
+            // Ensure audio context and media recorder are set up before starting recognition
+            // This is crucial if `setupAudio` failed initially or if the page was reloaded.
+            if (!mediaStream || !audioContext || !mediaRecorder) {
+                setupAudio().then(() => {
+                    initSpeechRecognition(); // Re-initialize recognition after audio setup
+                    startListeningInternal();
+                }).catch(err => {
+                    console.error('オーディオセットアップに失敗しました:', err);
+                    errorMessage = 'マイクのセットアップに失敗しました。';
+                    isListening = false;
+                    updateUI();
+                });
+            } else {
+                startListeningInternal();
+            }
+        }
+
         // Stop listening function
         function stopListening() {
             if (!browserSupport) return;
             manualStop = true; // Set manualStop flag
+            clearInterval(recognitionHealthCheckInterval); // Clear health check on manual stop
             try {
                 recognition.stop();
                 if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -544,14 +599,14 @@
         function sendEmail() {
             const subject = encodeURIComponent('音声文字おこし結果');
             // Include speaker labels in the email body (still using internal speakerLabel for export)
-            const body = encodeURIComponent(transcripts.map(t => `${t.speakerLabel}: ${t.text}`).join('\n'));
+            const body = encodeURIComponent(transcripts.map(t => `${t.speakerLabel ? t.speakerLabel + ': ' : ''}${t.text}`).join('\n'));
             window.location.href = `mailto:?subject=${subject}&body=${body}`;
         }
 
         // Function to copy transcripts to clipboard
         function copyToClipboard() {
             // Include speaker labels in the copied text (still using internal speakerLabel for export)
-            const textToCopy = transcripts.map(t => `${t.speakerLabel}: ${t.text}`).join('\n');
+            const textToCopy = transcripts.map(t => `${t.speakerLabel ? t.speakerLabel + ': ' : ''}${t.text}`).join('\n');
             const textArea = document.createElement('textarea');
             textArea.value = textToCopy;
             document.body.appendChild(textArea);
@@ -607,6 +662,9 @@
             }
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
+            }
+            if (recognitionHealthCheckInterval) { // Clear health check interval on unload
+                clearInterval(recognitionHealthCheckInterval);
             }
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
