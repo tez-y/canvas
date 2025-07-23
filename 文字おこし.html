@@ -1,0 +1,619 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リアルタイム音声文字おこし</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="root" class="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-inter">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl">
+            <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">リアルタイム音声文字おこし</h1>
+
+            <div id="browser-support-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mb-4 text-center"></div>
+            <div id="error-message" class="hidden bg-orange-100 border border-orange-400 text-orange-700 px-4 py-3 rounded-xl mb-4 text-center"></div>
+
+            <div class="flex justify-center space-x-4 mb-6">
+                <button id="start-button" class="px-6 py-3 rounded-xl font-semibold transition duration-300 ease-in-out bg-blue-500 hover:bg-blue-600 text-white shadow-md">
+                    文字おこしを開始
+                </button>
+                <button id="stop-button" class="px-6 py-3 rounded-xl font-semibold transition duration-300 ease-in-out bg-red-500 hover:bg-red-600 text-white shadow-md" disabled>
+                    文字おこしを停止
+                </button>
+            </div>
+
+            <!-- Microphone Activity Indicator -->
+            <div class="flex items-center justify-center mb-4">
+                <div id="mic-activity-indicator" class="w-8 h-8 rounded-full transition-all duration-100" style="background-color: rgb(156, 163, 175);"></div>
+                <span class="ml-2 text-gray-700">マイクアクティビティ</span>
+            </div>
+
+            <div id="transcripts-container" class="bg-gray-50 p-6 rounded-xl border border-gray-200 h-80 overflow-y-auto shadow-inner">
+                <p id="initial-message" class="text-gray-500 text-center italic">
+                    「文字おこしを開始」ボタンをクリックして話してください...
+                </p>
+                <div id="transcripts-list"></div>
+                <p id="current-transcript" class="text-gray-400 italic text-lg animate-pulse"></p>
+            </div>
+
+            <div class="flex justify-center space-x-4 mt-6">
+                <button id="email-button" class="px-6 py-3 rounded-xl font-semibold transition duration-300 ease-in-out bg-gray-500 hover:bg-gray-600 text-white shadow-md" disabled>
+                    結果をメールで送信
+                </button>
+                <button id="copy-button" class="px-6 py-3 rounded-xl font-semibold transition duration-300 ease-in-out bg-gray-500 hover:bg-gray-600 text-white shadow-md" disabled>
+                    結果をコピー
+                </button>
+                <button id="download-audio-button" class="px-6 py-3 rounded-xl font-semibold transition duration-300 ease-in-out bg-blue-500 hover:bg-blue-600 text-white shadow-md" disabled>
+                    音声ファイルをダウンロード
+                </button>
+            </div>
+            <div id="copy-message" class="hidden mt-2 text-center text-green-600 text-sm">コピーしました！</div>
+            <div id="audio-download-message" class="hidden mt-2 text-center text-green-600 text-sm">音声録音が完了しました。</div>
+        </div>
+    </div>
+
+    <script>
+        // Define speaker colors
+        const SPEAKER_COLORS = [
+          'text-blue-600',
+          'text-green-600',
+          'text-red-600',
+          'text-purple-600',
+          'text-yellow-600',
+          'text-indigo-600',
+          'text-pink-600',
+          'text-teal-600',
+        ];
+
+        // Thresholds for speaker differentiation
+        const PAUSE_THRESHOLD_MS = 1500; // 1.5 seconds of silence
+        const PITCH_THRESHOLD_DIFF = 0.10; // Relative change in dominant frequency (0.0 to 1.0) - Adjusted for stricter detection
+        const UTTERANCE_DURATION_THRESHOLD_MS = 2000; // 2 seconds
+
+        // Global variables for state management
+        let isListening = false;
+        let transcripts = [];
+        let errorMessage = '';
+        let browserSupport = true;
+        let micActivity = 0;
+        let currentSpeakerAlphabet = 'A'; // Internal label, not displayed
+        let manualStop = false; // Flag to track if stop was user-initiated
+
+        // Web Speech API and Web Audio API instances
+        let recognition = null;
+        let audioContext = null;
+        let analyserNode = null;
+        let mediaStream = null;
+        let frequencyDataArray = null; // For pitch analysis
+        let timeDomainDataArray = null; // For volume/mic activity
+        let animationFrameId = null;
+
+        // MediaRecorder specific variables
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let audioBlob = null; // Stores the final recorded audio Blob
+
+        // State for speaker differentiation logic
+        let lastUtteranceEndTime = 0;
+        let speakerProfiles = []; // Stores { id: 'A', colorIndex: 0, avgPitch: 0.5 } for each detected speaker
+        let currentUtteranceStartTime = 0;
+        let currentTranscript = ''; // For interim results display
+
+        // DOM Elements
+        const startButton = document.getElementById('start-button');
+        const stopButton = document.getElementById('stop-button');
+        const browserSupportMessage = document.getElementById('browser-support-message');
+        const errorMessageDisplay = document.getElementById('error-message');
+        const micActivityIndicator = document.getElementById('mic-activity-indicator');
+        // const currentSpeakerDisplay = document.getElementById('current-speaker-display'); // Removed from HTML
+        const initialMessage = document.getElementById('initial-message');
+        const transcriptsList = document.getElementById('transcripts-list');
+        const currentTranscriptDisplay = document.getElementById('current-transcript');
+        const emailButton = document.getElementById('email-button');
+        const copyButton = document.getElementById('copy-button');
+        const copyMessage = document.getElementById('copy-message');
+        const downloadAudioButton = document.getElementById('download-audio-button');
+        const audioDownloadMessage = document.getElementById('audio-download-message');
+
+        // Function to update UI based on state
+        function updateUI() {
+            startButton.disabled = isListening || !browserSupport;
+            stopButton.disabled = !isListening || !browserSupport;
+            emailButton.disabled = transcripts.length === 0; // Disable if no transcripts
+            copyButton.disabled = transcripts.length === 0; // Disable if no transcripts
+            downloadAudioButton.disabled = !audioBlob; // Disable if no audio recorded yet
+
+            if (isListening) {
+                startButton.textContent = 'リッスン中...';
+                startButton.classList.add('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                startButton.classList.remove('bg-blue-500', 'hover:bg-blue-600', 'text-white', 'shadow-md');
+                stopButton.classList.remove('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                stopButton.classList.add('bg-red-500', 'hover:bg-red-600', 'text-white', 'shadow-md');
+            } else {
+                startButton.textContent = '文字おこしを開始';
+                startButton.classList.remove('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                startButton.classList.add('bg-blue-500', 'hover:bg-blue-600', 'text-white', 'shadow-md');
+                stopButton.classList.add('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                stopButton.classList.remove('bg-red-500', 'hover:bg-red-600', 'text-white', 'shadow-md');
+            }
+
+            // Update disabled state for new buttons
+            if (transcripts.length === 0) {
+                emailButton.classList.add('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                emailButton.classList.remove('bg-gray-500', 'hover:bg-gray-600', 'text-white', 'shadow-md');
+                copyButton.classList.add('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                copyButton.classList.remove('bg-gray-500', 'hover:bg-gray-600', 'text-white', 'shadow-md');
+            } else {
+                emailButton.classList.remove('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                emailButton.classList.add('bg-gray-500', 'hover:bg-gray-600', 'text-white', 'shadow-md');
+                copyButton.classList.remove('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                copyButton.classList.add('bg-gray-500', 'hover:bg-gray-600', 'text-white', 'shadow-md');
+            }
+
+            if (!audioBlob) {
+                downloadAudioButton.classList.add('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                downloadAudioButton.classList.remove('bg-blue-500', 'hover:bg-blue-600', 'text-white', 'shadow-md');
+            } else {
+                downloadAudioButton.classList.remove('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                downloadAudioButton.classList.add('bg-blue-500', 'hover:bg-blue-600', 'text-white', 'shadow-md');
+            }
+
+
+            if (!browserSupport) {
+                browserSupportMessage.textContent = errorMessage;
+                browserSupportMessage.classList.remove('hidden');
+            } else {
+                browserSupportMessage.classList.add('hidden');
+            }
+
+            if (errorMessage && browserSupport) {
+                errorMessageDisplay.textContent = errorMessage;
+                errorMessageDisplay.classList.remove('hidden');
+            } else {
+                errorMessageDisplay.classList.add('hidden');
+            }
+
+            micActivityIndicator.style.backgroundColor = micActivity > 5 ? 'rgb(34, 197, 94)' : 'rgb(156, 163, 175)';
+            micActivityIndicator.style.transform = `scale(${1 + micActivity / 100})`;
+
+            // Removed update for currentSpeakerDisplay as it's no longer in HTML
+            // currentSpeakerDisplay.textContent = `現在の話者: ${currentSpeakerAlphabet}`;
+
+            transcriptsList.innerHTML = ''; // Clear previous transcripts
+            if (transcripts.length === 0 && !currentTranscript && !isListening) {
+                initialMessage.classList.remove('hidden');
+            } else {
+                initialMessage.classList.add('hidden');
+            }
+
+            transcripts.forEach(item => {
+                const p = document.createElement('p');
+                p.className = `mb-2 text-lg ${item.color}`;
+                p.textContent = item.text; // Only display the text, no speaker label
+                transcriptsList.appendChild(p);
+            });
+
+            currentTranscriptDisplay.textContent = currentTranscript;
+            if (currentTranscript) {
+                currentTranscriptDisplay.classList.remove('hidden');
+                currentTranscriptDisplay.classList.add('animate-pulse');
+            } else {
+                currentTranscriptDisplay.classList.add('hidden');
+                currentTranscriptDisplay.classList.remove('animate-pulse');
+            }
+
+            // Hide messages initially
+            copyMessage.classList.add('hidden');
+            audioDownloadMessage.classList.add('hidden');
+
+            // Scroll to bottom
+            const transcriptsContainer = document.getElementById('transcripts-container');
+            transcriptsContainer.scrollTop = transcriptsContainer.scrollHeight;
+        }
+
+        // Function to get dominant frequency (a simple pitch proxy)
+        function getDominantFrequencyProxy() {
+            if (!analyserNode || !frequencyDataArray || !audioContext) return 0;
+
+            analyserNode.getByteFrequencyData(frequencyDataArray);
+            const data = frequencyDataArray;
+            let maxVolume = 0;
+            let dominantFrequencyIndex = 0;
+
+            // Analyze a specific range (e.g., 80Hz to 400Hz for human voice fundamentals)
+            const minFreq = 80; // Hz
+            const maxFreq = 400; // Hz
+            const sampleRate = audioContext.sampleRate;
+            const fftSize = analyserNode.fftSize;
+            const freqBinWidth = sampleRate / fftSize;
+
+            const minIndex = Math.floor(minFreq / freqBinWidth);
+            const maxIndex = Math.floor(maxFreq / freqBinWidth);
+
+            for (let i = minIndex; i <= maxIndex; i++) {
+              if (data[i] > maxVolume) {
+                maxVolume = data[i];
+                dominantFrequencyIndex = i;
+              }
+            }
+            // Normalize the dominant frequency index to a 0-1 range based on the vocal range
+            return dominantFrequencyIndex / (maxIndex - minIndex);
+        }
+
+        // Set up Web Audio API for pitch analysis and mic activity
+        async function setupAudio() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                analyserNode = audioContext.createAnalyser();
+
+                analyserNode.fftSize = 2048; // Fast Fourier Transform size
+                frequencyDataArray = new Uint8Array(analyserNode.frequencyBinCount); // For frequency data
+                timeDomainDataArray = new Uint8Array(analyserNode.fftSize); // For volume/mic activity
+
+                source.connect(analyserNode);
+                // analyserNode.connect(audioContext.destination); // Connect to speakers if you want to hear yourself
+
+                // Initialize MediaRecorder
+                mediaRecorder = new MediaRecorder(mediaStream);
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                mediaRecorder.onstop = () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); // Default to webm
+                    console.log('Audio recording stopped. Blob created:', audioBlob);
+                    audioDownloadMessage.classList.remove('hidden');
+                    setTimeout(() => {
+                        audioDownloadMessage.classList.add('hidden');
+                    }, 3000);
+                    updateUI(); // Update UI to enable download button
+                };
+
+                // Start continuous audio analysis (for pitch proxy and mic activity)
+                const analyzeAudio = () => {
+                  if (analyserNode && timeDomainDataArray) {
+                    analyserNode.getByteTimeDomainData(timeDomainDataArray); // Get waveform data
+                    let sum = 0;
+                    for (let i = 0; i < timeDomainDataArray.length; i++) {
+                        sum += Math.abs(timeDomainDataArray[i] - 128); // Average absolute deviation from 128 (center)
+                    }
+                    micActivity = sum / timeDomainDataArray.length; // This will be a value from 0 to 128
+                    updateUI(); // Update UI with new mic activity
+                  }
+                  animationFrameId = requestAnimationFrame(analyzeAudio);
+                };
+                animationFrameId = requestAnimationFrame(analyzeAudio);
+
+            } catch (err) {
+                console.error('マイクへのアクセスに失敗しました:', err);
+                errorMessage = 'マイクへのアクセスが拒否されました。ブラウザの設定でマイクの使用を許可し、ページをリロードしてください。';
+                isListening = false;
+                updateUI();
+            }
+        }
+
+        // Initialize SpeechRecognition
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                browserSupport = false;
+                errorMessage = 'お使いのブラウザは音声認識APIをサポートしていません。ChromeまたはEdgeの最新版をご利用ください。';
+                updateUI();
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true; // Keep listening
+            recognition.interimResults = true; // Get interim results
+            recognition.lang = 'ja-JP'; // Set language to Japanese
+
+            // Event handlers for SpeechRecognition
+            recognition.onstart = () => {
+                console.log('音声認識を開始しました。');
+                isListening = true;
+                currentUtteranceStartTime = performance.now(); // Mark start of current speech segment
+                updateUI();
+            };
+
+            recognition.onresult = (event) => {
+                let interim = '';
+                let final = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        final += transcript;
+                    } else {
+                        interim += transcript;
+                    }
+                }
+
+                currentTranscript = interim;
+                updateUI();
+
+                if (final) {
+                    const utteranceEndTime = performance.now();
+                    const utteranceDuration = utteranceEndTime - currentUtteranceStartTime;
+                    console.log(`Final transcript received. Duration: ${utteranceDuration}ms`);
+
+                    // Ignore utterances shorter than UTTERANCE_DURATION_THRESHOLD_MS (2 seconds)
+                    if (utteranceDuration < UTTERANCE_DURATION_THRESHOLD_MS) {
+                        console.log(`${UTTERANCE_DURATION_THRESHOLD_MS / 1000}秒以下の発話は無視されました。`);
+                        currentTranscript = ''; // Clear interim for ignored utterance
+                        updateUI();
+                        return;
+                    }
+
+                    const currentPitchProxy = getDominantFrequencyProxy();
+                    const pauseDuration = utteranceEndTime - lastUtteranceEndTime;
+
+                    let assignedSpeakerIndex = -1; // Index into speakerProfiles
+                    let bestMatchPitchDiff = Infinity;
+
+                    // Find the best matching existing speaker based on pitch
+                    for (let i = 0; i < speakerProfiles.length; i++) {
+                        const profile = speakerProfiles[i];
+                        const pitchDiff = Math.abs(currentPitchProxy - profile.avgPitch);
+                        if (pitchDiff < bestMatchPitchDiff) {
+                            bestMatchPitchDiff = pitchDiff;
+                            assignedSpeakerIndex = i;
+                        }
+                    }
+
+                    let shouldAssignNewSpeaker = false;
+
+                    if (speakerProfiles.length === 0) { // First utterance ever
+                        shouldAssignNewSpeaker = true;
+                    } else {
+                        // If there's a significant pause AND the best match's pitch difference is still too high, it's a new speaker.
+                        // OR if there's NO significant pause, BUT the pitch difference to the best match is too high, it's a new speaker.
+                        // This logic aims to be more lenient for short pauses/continuous speech from the same person.
+                        if (pauseDuration > PAUSE_THRESHOLD_MS) {
+                            if (bestMatchPitchDiff > PITCH_THRESHOLD_DIFF) {
+                                shouldAssignNewSpeaker = true;
+                            }
+                        } else { // Short pause or no pause
+                            if (bestMatchPitchDiff > PITCH_THRESHOLD_DIFF) {
+                                shouldAssignNewSpeaker = true;
+                            }
+                        }
+                    }
+
+                    if (shouldAssignNewSpeaker) {
+                        // Create a new speaker profile
+                        const newColorIndex = (speakerProfiles.length > 0) ? (speakerProfiles[speakerProfiles.length - 1].colorIndex + 1) % SPEAKER_COLORS.length : 0;
+                        const newSpeakerId = String.fromCharCode(65 + newColorIndex); // 'A' is ASCII 65
+                        speakerProfiles.push({
+                            id: newSpeakerId,
+                            colorIndex: newColorIndex,
+                            avgPitch: currentPitchProxy
+                        });
+                        currentSpeakerAlphabet = newSpeakerId;
+                        // Set speakerColorIndex to the new speaker's color
+                        speakerColorIndex = newColorIndex;
+                    } else {
+                        // Assign to the best matched existing speaker
+                        // Update the speakerColorIndex and currentSpeakerAlphabet to match the assigned speaker
+                        speakerColorIndex = speakerProfiles[assignedSpeakerIndex].colorIndex;
+                        currentSpeakerAlphabet = speakerProfiles[assignedSpeakerIndex].id;
+                        // Update the average pitch of the assigned speaker (weighted average for smoother adaptation)
+                        speakerProfiles[assignedSpeakerIndex].avgPitch =
+                            (speakerProfiles[assignedSpeakerIndex].avgPitch * 0.8) + (currentPitchProxy * 0.2);
+                    }
+
+                    transcripts.push({
+                        text: final,
+                        color: SPEAKER_COLORS[speakerColorIndex],
+                        speakerLabel: currentSpeakerAlphabet, // Store speaker label internally for email/copy
+                        timestamp: utteranceEndTime,
+                        duration: utteranceDuration,
+                        pitchProxy: currentPitchProxy,
+                    });
+
+                    lastUtteranceEndTime = utteranceEndTime;
+                    currentTranscript = '';
+                    currentUtteranceStartTime = performance.now(); // Reset start time for next utterance
+                    updateUI();
+                }
+            };
+
+            recognition.onend = () => {
+                console.log('音声認識が終了しました。');
+                if (isListening && !manualStop) { // If listening and not manually stopped, restart
+                    console.log('予期せぬ終了、再起動します。');
+                    recognition.start();
+                } else {
+                    isListening = false; // Ensure isListening is false if it was a manual stop or truly ended
+                    updateUI();
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('音声認識エラー:', event.error);
+                errorMessage = `音声認識エラー: ${event.error}。マイクが正しく接続されているか、ブラウザの設定を確認してください。`;
+                updateUI(); // Update UI with error message
+
+                // Attempt to restart unless manually stopped
+                if (!manualStop) {
+                    console.log('エラー発生、再起動を試みます。');
+                    // Add a small delay before restarting to prevent rapid error loops
+                    setTimeout(() => {
+                        try {
+                            recognition.start();
+                            isListening = true; // Set back to true if restart is attempted
+                            updateUI();
+                        } catch (e) {
+                            console.error('再起動に失敗しました:', e);
+                            errorMessage = '音声認識の再起動に失敗しました。';
+                            isListening = false; // Truly stop if restart fails
+                            updateUI();
+                            // If restart failed, then clean up audio resources
+                            if (mediaStream) {
+                                mediaStream.getTracks().forEach(track => track.stop());
+                                mediaStream = null;
+                            }
+                            if (audioContext) {
+                                audioContext.close();
+                                audioContext = null;
+                            }
+                        }
+                    }, 500); // 500ms delay
+                } else {
+                    isListening = false; // If manual stop, ensure it stays stopped
+                    updateUI();
+                    // If manual stop, clean up audio resources immediately
+                    if (mediaStream) {
+                        mediaStream.getTracks().forEach(track => track.stop());
+                        mediaStream = null;
+                    }
+                    if (audioContext) {
+                        audioContext.close();
+                        audioContext = null;
+                    }
+                }
+            };
+        }
+
+        // Start listening function
+        function startListening() {
+            if (!browserSupport) return;
+            errorMessage = '';
+            transcripts = [];
+            currentTranscript = '';
+            lastUtteranceEndTime = 0;
+            speakerProfiles = []; // Reset speaker profiles
+            speakerColorIndex = 0; // Reset speaker color index
+            currentSpeakerAlphabet = 'A'; // Reset speaker label to 'A'
+            currentUtteranceStartTime = performance.now();
+            manualStop = false; // Reset manualStop flag
+            audioBlob = null; // Clear previous audio blob
+            audioChunks = []; // Clear previous audio chunks
+            updateUI(); // Initial UI update
+
+            try {
+                recognition.start();
+                if (mediaRecorder && mediaRecorder.state === 'inactive') {
+                    mediaRecorder.start(); // Start audio recording
+                    console.log('MediaRecorder started.');
+                }
+                isListening = true;
+                updateUI();
+            } catch (e) {
+                console.error('認識の開始に失敗しました:', e);
+                errorMessage = '認識の開始に失敗しました。既に開始されているか、またはエラーが発生しました。';
+                isListening = false;
+                updateUI();
+            }
+        }
+
+        // Stop listening function
+        function stopListening() {
+            if (!browserSupport) return;
+            manualStop = true; // Set manualStop flag
+            try {
+                recognition.stop();
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop(); // Stop audio recording
+                    console.log('MediaRecorder stopped.');
+                }
+                isListening = false;
+                updateUI();
+            } catch (e) {
+                console.error('認識の停止に失敗しました:', e);
+                errorMessage = '認識の停止に失敗しました。';
+                updateUI();
+            }
+        }
+
+        // Function to send transcripts via email
+        function sendEmail() {
+            const subject = encodeURIComponent('音声文字おこし結果');
+            // Include speaker labels in the email body (still using internal speakerLabel for export)
+            const body = encodeURIComponent(transcripts.map(t => `${t.speakerLabel}: ${t.text}`).join('\n'));
+            window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        }
+
+        // Function to copy transcripts to clipboard
+        function copyToClipboard() {
+            // Include speaker labels in the copied text (still using internal speakerLabel for export)
+            const textToCopy = transcripts.map(t => `${t.speakerLabel}: ${t.text}`).join('\n');
+            const textArea = document.createElement('textarea');
+            textArea.value = textToCopy;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                copyMessage.classList.remove('hidden');
+                setTimeout(() => {
+                    copyMessage.classList.add('hidden');
+                }, 2000); // Hide message after 2 seconds
+            } catch (err) {
+                console.error('クリップボードへのコピーに失敗しました:', err);
+                errorMessage = 'クリップボードへのコピーに失敗しました。';
+                updateUI();
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Function to download the recorded audio
+        function downloadAudio() {
+            if (audioBlob) {
+                const url = URL.createObjectURL(audioBlob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `transcription_audio_${new Date().toISOString().slice(0,10)}.webm`; // Filename
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url); // Clean up
+                document.body.removeChild(a);
+            } else {
+                errorMessage = 'ダウンロードする音声ファイルがありません。';
+                updateUI();
+            }
+        }
+
+        // Event Listeners
+        window.onload = () => {
+            initSpeechRecognition();
+            setupAudio(); // Setup audio context, analyser, and MediaRecorder
+            startButton.addEventListener('click', startListening);
+            stopButton.addEventListener('click', stopListening);
+            emailButton.addEventListener('click', sendEmail); // Add event listener for email button
+            copyButton.addEventListener('click', copyToClipboard); // Add event listener for copy button
+            downloadAudioButton.addEventListener('click', downloadAudio); // Add event listener for download audio button
+            updateUI(); // Initial UI render
+        };
+
+        // Cleanup on page unload (optional, but good practice)
+        window.onbeforeunload = () => {
+            if (recognition) {
+                recognition.stop();
+            }
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+        };
+    </script>
+</body>
+</html>
