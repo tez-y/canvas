@@ -17,7 +17,7 @@
 <body>
     <div id="root" class="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-inter">
         <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl">
-            <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">リアルタイム音声文字おこし２</h1>
+            <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">リアルタイム音声文字おこし</h1>
 
             <div id="browser-support-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mb-4 text-center"></div>
             <div id="error-message" class="hidden bg-orange-100 border border-orange-400 text-orange-700 px-4 py-3 rounded-xl mb-4 text-center"></div>
@@ -444,6 +444,13 @@
             recognition.onerror = (event) => {
                 console.error('音声認識エラー:', event.error);
                 errorMessage = `音声認識エラー: ${event.error}。マイクが正しく接続されているか、ブラウザの設定を確認してください。`;
+                
+                // Specific handling for 'service-not-allowed' on mobile
+                if (event.error === 'service-not-allowed') {
+                    errorMessage = 'マイクの使用がブラウザによって停止されました。再度「文字おこしを開始」ボタンをクリックしてください。';
+                    manualStop = true; // Prevent automatic restart
+                }
+                
                 updateUI(); // Update UI with error message
                 clearInterval(recognitionHealthCheckInterval); // Clear health check
 
@@ -495,8 +502,11 @@
             }
             recognitionHealthCheckInterval = setInterval(() => {
                 // Check if recognition is supposed to be listening but isn't
-                if (isListening && !manualStop && recognition && !recognition.recognizing) {
-                    console.log('認識が停止していることを検出しました。再起動します。');
+                // recognition.recognizing property is not always reliable across all browsers/versions for continuous mode.
+                // A more robust check might involve listening to 'audiostart'/'audioend' or 'speechstart'/'speechend'
+                // However, for now, we rely on `isListening` and `manualStop` flags.
+                if (isListening && !manualStop && recognition && recognition.state !== 'listening') { // Check recognition.state if available
+                    console.log('認識が停止していることを検出しました。再起動を試みます。');
                     try {
                         recognition.start();
                     } catch (e) {
@@ -551,7 +561,6 @@
             lastUtteranceEndTime = 0;
             speakerProfiles = []; // Reset speaker profiles
             speakerColorIndex = 0; // Reset speaker color index
-            // currentSpeakerAlphabet = 'A'; // No longer used for display
             currentUtteranceStartTime = performance.now();
             manualStop = false; // Reset manualStop flag
             audioBlob = null; // Clear previous audio blob
