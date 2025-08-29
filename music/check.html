@@ -1,0 +1,398 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .staff-line {
+            height: 2px;
+            background-color: #000;
+        }
+        .note-container {
+            position: relative;
+            width: 100%;
+        }
+        .note {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .note-head {
+            width: 25px;
+            height: 20px;
+            background-color: #000;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 10px;
+        }
+        .note-stem {
+            position: absolute;
+            width: 2px;
+            height: 30px;
+            background-color: #000;
+        }
+        .ledger-line {
+            position: absolute;
+            width: 35px;
+            height: 2px;
+            background-color: #000;
+        }
+        .feedback {
+            font-size: 4rem;
+            font-weight: bold;
+            display: none;
+        }
+        .correct {
+            color: green;
+        }
+        .incorrect {
+            color: red;
+        }
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8 flex flex-col items-center min-h-screen">
+    <div class="container bg-white p-8 rounded-2xl shadow-lg flex flex-col items-center">
+        <h1 class="text-3xl md:text-4xl font-bold mb-6 text-center">ミュージックトレーナー</h1>
+
+        <!-- 五線譜エリア -->
+        <div class="relative w-full h-40 mt-8 mb-12 border-2 border-black p-4 rounded-lg bg-white overflow-hidden">
+            <!-- 五線 -->
+            <div class="absolute inset-x-0 mx-auto w-4/5">
+                <div class="staff-line absolute w-full top-6"></div>
+                <div class="staff-line absolute w-full top-10"></div>
+                <div class="staff-line absolute w-full top-14"></div>
+                <div class="staff-line absolute w-full top-18"></div>
+                <div class="staff-line absolute w-full top-22"></div>
+            </div>
+
+            <!-- 音符の配置 (C5を五線の下に追加して調整) -->
+            <div id="note-display" class="note-container relative h-full flex justify-center items-center">
+                <!-- C5 -->
+                <div class="note absolute" style="left: 20%; top: 62px; transform: translateX(-50%);">
+                    <div class="note-head" data-note="C5"></div>
+                    <div class="note-stem absolute left-full -translate-x-1/2 bottom-0" style="height: 30px; transform: rotate(-180deg);"></div>
+                    <div class="ledger-line absolute -top-1 left-1/2 transform -translate-x-1/2"></div>
+                </div>
+                
+                <!-- D5 -->
+                <div class="note absolute" style="left: 25%; top: 56px; transform: translateX(-50%);">
+                    <div class="note-head" data-note="D5"></div>
+                    <div class="note-stem absolute left-full -translate-x-1/2 bottom-0" style="height: 30px; transform: rotate(-180deg);"></div>
+                </div>
+
+                <!-- E5 -->
+                <div class="note absolute" style="left: 30%; top: 50px; transform: translateX(-50%);">
+                    <div class="note-head" data-note="E5"></div>
+                    <div class="note-stem absolute left-full -translate-x-1/2 bottom-0" style="height: 30px; transform: rotate(-180deg);"></div>
+                </div>
+
+                <!-- F5 -->
+                <div class="note absolute" style="left: 35%; top: 44px; transform: translateX(-50%);">
+                    <div class="note-head" data-note="F5"></div>
+                    <div class="note-stem absolute left-full -translate-x-1/2 bottom-0" style="height: 30px; transform: rotate(-180deg);"></div>
+                </div>
+
+                <!-- G5 -->
+                <div class="note absolute" style="left: 40%; top: 38px; transform: translateX(-50%);">
+                    <div class="note-head" data-note="G5"></div>
+                    <div class="note-stem absolute left-full -translate-x-1/2 bottom-0" style="height: 30px; transform: rotate(-180deg);"></div>
+                </div>
+
+                <!-- A5 -->
+                <div class="note absolute" style="left: 45%; top: 32px; transform: translateX(-50%);">
+                    <div class="note-head" data-note="A5"></div>
+                    <div class="note-stem absolute left-full -translate-x-1/2 bottom-0" style="height: 30px; transform: rotate(-180deg);"></div>
+                </div>
+
+                <!-- B5 -->
+                <div class="note absolute" style="left: 50%; top: 26px; transform: translateX(-50%);">
+                    <div class="note-head" data-note="B5"></div>
+                    <div class="note-stem absolute left-full -translate-x-1/2 bottom-0" style="height: 30px; transform: rotate(-180deg);"></div>
+                </div>
+
+                <!-- C6 -->
+                <div class="note absolute" style="left: 55%; top: 20px; transform: translateX(-50%);">
+                    <div class="note-head" data-note="C6"></div>
+                    <div class="note-stem absolute left-full -translate-x-1/2 bottom-0" style="height: 30px; transform: rotate(-180deg);"></div>
+                </div>
+
+                <!-- D6 -->
+                <div class="note absolute" style="left: 60%; top: 14px; transform: translateX(-50%);">
+                    <div class="note-head" data-note="D6"></div>
+                    <div class="note-stem absolute left-full -translate-x-1/2 bottom-0" style="height: 30px; transform: rotate(-180deg);"></div>
+                    <div class="ledger-line absolute top-full left-1/2 transform -translate-x-1/2"></div>
+                </div>
+
+                <!-- E6 -->
+                <div class="note absolute" style="left: 65%; top: 8px; transform: translateX(-50%);">
+                    <div class="note-head" data-note="E6"></div>
+                    <div class="note-stem absolute left-full -translate-x-1/2 bottom-0" style="height: 30px; transform: rotate(-180deg);"></div>
+                    <div class="ledger-line absolute top-full left-1/2 transform -translate-x-1/2"></div>
+                </div>
+
+                <!-- F6 -->
+                <div class="note absolute" style="left: 70%; top: 2px; transform: translateX(-50%);">
+                    <div class="note-head" data-note="F6"></div>
+                    <div class="note-stem absolute left-full -translate-x-1/2 bottom-0" style="height: 30px; transform: rotate(-180deg);"></div>
+                    <div class="ledger-line absolute top-full left-1/2 transform -translate-x-1/2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 画像表示エリア -->
+        <div id="note-image-container" class="mt-8 flex justify-center items-center h-48">
+            <img id="note-image" src="" alt="音階画像" class="max-h-full max-w-full rounded-lg shadow-md" style="display: none;">
+        </div>
+
+        <!-- フィードバック表示エリア -->
+        <div id="feedback-area" class="mt-8">
+            <span id="feedback-text" class="feedback"></span>
+        </div>
+
+        <!-- マイクボタン -->
+        <div class="mt-12 flex flex-col items-center">
+            <button id="microphone-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">
+                マイクで音を拾う
+            </button>
+            <p id="mic-status" class="mt-4 text-sm text-gray-600">準備完了</p>
+        </div>
+    </div>
+
+    <!-- モーダルダイアログ -->
+    <div id="permission-modal" class="modal">
+        <div class="modal-content bg-white p-6 rounded-lg shadow-xl text-center">
+            <h2 class="text-2xl font-bold mb-4">マイクの許可が必要です</h2>
+            <p class="mb-6">マイクへのアクセスを許可してください。これにより、あなたの演奏する音を検出することができます。</p>
+            <button id="close-modal-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // 音階と周波数のマッピング (平均律)
+        const notes = {
+            'C5': 523.25, 'C5s': 554.37, 'D5': 587.33, 'D5s': 622.25, 'E5': 659.26, 'F5': 698.46, 'F5s': 739.99, 'G5': 783.99, 'G5s': 830.61, 'A5': 880.00, 'A5s': 932.33, 'B5': 987.77,
+            'C6': 1046.50, 'C6s': 1108.73, 'D6': 1174.66, 'D6s': 1244.51, 'E6': 1318.51, 'F6': 1396.91, 'F6s': 1479.98, 'G6': 1567.98, 'G6s': 1661.22, 'A6': 1760.00, 'A6s': 1864.66, 'B6': 1975.53
+        };
+
+        const noteNames = {
+            'C5': 'ド', 'C5s': 'ド#', 'D5': 'レ', 'D5s': 'レ#', 'E5': 'ミ', 'F5': 'ファ', 'F5s': 'ファ#', 'G5': 'ソ', 'G5s': 'ソ#', 'A5': 'ラ', 'A5s': 'ラ#', 'B5': 'シ',
+            'C6': 'ド', 'C6s': 'ド#', 'D6': 'レ', 'D6s': 'レ#', 'E6': 'ミ', 'F6': 'ファ', 'F6s': 'ファ#', 'G6': 'ソ', 'G6s': 'ソ#', 'A6': 'ラ', 'A6s': 'ラ#', 'B6': 'シ'
+        };
+        
+        // C5からB5までの音符を五線譜上に配置するためのオフセット
+        const noteOffsets = {
+            'C5': 50, 'D5': 44, 'E5': 38, 'F5': 32, 'G5': 26, 'A5': 20, 'B5': 14,
+            'C6': 8, 'D6': 6, 'E6': 4, 'F6': 2, 'G6': 0
+        };
+        
+        const notesToDisplay = [
+            'C5', 'D5', 'E5', 'F5', 'G5', 'A5', 'B5', 'C6', 'D6', 'E6', 'F6', 'G6'
+        ];
+        
+        let audioContext;
+        let analyserNode;
+        let microphoneStream;
+        let isMicrophoneActive = false;
+        let currentNoteToMatch = null;
+        const noteMatchTolerance = 5; // Hz
+
+        const noteHeads = document.querySelectorAll('.note-head');
+        const noteImage = document.getElementById('note-image');
+        const feedbackText = document.getElementById('feedback-text');
+        const micButton = document.getElementById('microphone-button');
+        const micStatus = document.getElementById('mic-status');
+        const permissionModal = document.getElementById('permission-modal');
+        const closeModalButton = document.getElementById('close-modal-button');
+
+        // 音符の表示を初期化
+        notesToDisplay.forEach(noteName => {
+            const noteElement = document.querySelector(`.note-head[data-note="${noteName}"]`);
+            if (noteElement) {
+                noteElement.textContent = noteNames[noteName];
+            }
+        });
+
+        // 音符クリックイベントリスナー
+        noteHeads.forEach(noteHead => {
+            noteHead.addEventListener('click', () => {
+                const note = noteHead.dataset.note;
+                const noteName = noteNames[note] + note.substring(note.length - 1);
+                
+                // 画像ファイルのパスはダミーです。
+                // 実際の画像ファイル名に置き換えてください。
+                // 例: ド4.jpg, レ4.jpg など
+                noteImage.src = `./${noteName}.jpg`;
+                noteImage.style.display = 'block';
+
+                currentNoteToMatch = notes[note];
+
+                // フィードバック表示をリセット
+                feedbackText.textContent = '';
+                feedbackText.classList.remove('correct', 'incorrect');
+
+                // 音声認識を開始
+                startAudioAnalysis();
+            });
+        });
+
+        // マイクボタンクリックイベント
+        micButton.addEventListener('click', () => {
+            if (isMicrophoneActive) {
+                stopAudioAnalysis();
+            } else {
+                startAudioAnalysis();
+            }
+        });
+
+        // モーダルを閉じるボタン
+        closeModalButton.addEventListener('click', () => {
+            permissionModal.style.display = 'none';
+        });
+
+        // ピッチ検出アルゴリズム (YINアルゴリズムの簡易版)
+        function getPitch(buffer, sampleRate) {
+            const bufferSize = buffer.length;
+            const diff = new Float32Array(bufferSize);
+            for (let i = 0; i < bufferSize; i++) {
+                diff[i] = 0;
+                for (let j = 0; j < bufferSize - i; j++) {
+                    diff[i] += Math.pow(buffer[j] - buffer[j + i], 2);
+                }
+            }
+
+            // 最低周波数を見つける
+            let minVal = Infinity;
+            let minIdx = -1;
+            const threshold = 0.1; 
+            for (let i = 1; i < bufferSize; i++) {
+                if (diff[i] < minVal && diff[i] / diff[0] < threshold) {
+                    minVal = diff[i];
+                    minIdx = i;
+                }
+            }
+            if (minIdx === -1) {
+                return null;
+            }
+            return sampleRate / minIdx;
+        }
+
+        // 音声解析を開始
+        async function startAudioAnalysis() {
+            if (isMicrophoneActive) return;
+
+            try {
+                // AudioContextの初期化
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                // マイクへのアクセスを要求
+                microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                // AudioContextにストリームを接続
+                const source = audioContext.createMediaStreamSource(microphoneStream);
+                analyserNode = audioContext.createAnalyser();
+                analyserNode.fftSize = 2048;
+                source.connect(analyserNode);
+
+                isMicrophoneActive = true;
+                micButton.textContent = 'マイクを停止';
+                micStatus.textContent = 'マイクが有効です。';
+
+                // ピッチ検出ループを開始
+                analyzePitch();
+
+            } catch (err) {
+                console.error('マイクへのアクセスに失敗しました: ', err);
+                micStatus.textContent = 'マイクへのアクセスに失敗しました。';
+                permissionModal.style.display = 'flex';
+            }
+        }
+
+        // 音声解析を停止
+        function stopAudioAnalysis() {
+            if (!isMicrophoneActive) return;
+
+            if (microphoneStream) {
+                microphoneStream.getTracks().forEach(track => track.stop());
+            }
+            isMicrophoneActive = false;
+            micButton.textContent = 'マイクで音を拾う';
+            micStatus.textContent = '準備完了';
+            currentNoteToMatch = null;
+            feedbackText.textContent = '';
+        }
+
+        // ピッチ検出のメインループ
+        function analyzePitch() {
+            if (!isMicrophoneActive) return;
+
+            const bufferLength = analyserNode.fftSize;
+            const dataArray = new Float32Array(bufferLength);
+            analyserNode.getFloatTimeDomainData(dataArray);
+
+            const pitch = getPitch(dataArray, audioContext.sampleRate);
+
+            if (currentNoteToMatch && pitch !== null) {
+                const pitchDifference = Math.abs(pitch - currentNoteToMatch);
+
+                if (pitchDifference <= noteMatchTolerance) {
+                    feedbackText.textContent = '〇';
+                    feedbackText.classList.add('correct');
+                    feedbackText.classList.remove('incorrect');
+                } else {
+                    feedbackText.textContent = '×';
+                    feedbackText.classList.add('incorrect');
+                    feedbackText.classList.remove('correct');
+                }
+            } else {
+                feedbackText.textContent = '';
+                feedbackText.classList.remove('correct', 'incorrect');
+            }
+
+            // ループを継続
+            requestAnimationFrame(analyzePitch);
+        }
+        
+        window.onload = function() {
+            // アプリケーション起動時にマイクの準備をする
+        };
+    </script>
+</body>
+</html>
