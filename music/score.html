@@ -1,0 +1,319 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>楽譜作成ツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        .panel {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+        }
+        .keyboard {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding: 0.5rem;
+            background-color: #e5e7eb;
+            border-radius: 8px;
+        }
+        .key {
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .white-key {
+            width: 50px;
+            height: 200px;
+            background-color: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 0 0 5px 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+        }
+        .white-key.active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        .black-key {
+            width: 30px;
+            height: 120px;
+            background-color: #000000;
+            position: absolute;
+            z-index: 20;
+            border-radius: 0 0 5px 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+        }
+        .black-key.active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+        .note-label {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.875rem;
+            color: #4b5563;
+        }
+        .black-key .note-label {
+            color: #ffffff;
+        }
+        .output-box {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1rem;
+            min-height: 100px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        .control-button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .control-button:hover {
+            transform: translateY(-2px);
+        }
+        #copyButton {
+            background-color: #4b5563;
+            color: #ffffff;
+        }
+        #copyButton:hover {
+            background-color: #374151;
+        }
+        #downloadButton {
+            background-color: #3b82f6;
+            color: #ffffff;
+        }
+        #downloadButton:hover {
+            background-color: #2563eb;
+        }
+        .message-box {
+            position: fixed;
+            top: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #10b981;
+            color: #ffffff;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="container">
+        <!-- タイトル -->
+        <h1 class="text-3xl md:text-4xl font-bold text-center text-gray-800">楽譜作成ツール</h1>
+        <p class="text-center text-gray-600 mt-2">ピアノ鍵盤をクリックして楽譜を生成します</p>
+
+        <!-- 鍵盤エリア -->
+        <div class="panel">
+            <h2 class="text-xl font-bold text-gray-700 mb-4">ピアノ鍵盤</h2>
+            <div class="keyboard-container overflow-x-auto">
+                <div id="keyboard" class="keyboard"></div>
+            </div>
+        </div>
+
+        <!-- テキスト出力エリア -->
+        <div class="panel">
+            <h2 class="text-xl font-bold text-gray-700 mb-4">生成された楽譜</h2>
+            <div id="output" class="output-box"></div>
+        </div>
+
+        <!-- ボタンエリア -->
+        <div class="button-group">
+            <button id="copyButton" class="control-button">コピー</button>
+            <button id="downloadButton" class="control-button">ダウンロード</button>
+            <button id="clearButton" class="control-button bg-red-500 text-white hover:bg-red-600">クリア</button>
+        </div>
+
+        <!-- メッセージボックス -->
+        <div id="messageBox" class="message-box"></div>
+    </div>
+
+    <script>
+        // 音名とオクターブの定義
+        const notes = ["ド", "レ", "ミ", "ファ", "ソ", "ラ", "シ"];
+        const output = document.getElementById('output');
+        const keyboard = document.getElementById('keyboard');
+        const copyButton = document.getElementById('copyButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const clearButton = document.getElementById('clearButton');
+        const messageBox = document.getElementById('messageBox');
+        let currentNotes = [];
+        
+        // 許可されたシャープ付き音符
+        const allowedSharps = ["ファ5", "ソ5", "ラ5", "ド6"];
+
+        // メッセージを表示する関数
+        function showMessage(message, duration = 2000) {
+            messageBox.textContent = message;
+            messageBox.classList.add('show');
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, duration);
+        }
+
+        // 楽譜フォーマットを生成する関数
+        function generateScoreText() {
+            return currentNotes.join('');
+        }
+
+        // 鍵盤を作成する関数
+        function createKeyboard() {
+            const startOctave = 5;
+            const endNote = "ソ";
+            const endOctave = 6;
+            
+            for (let octave = startOctave; octave <= endOctave; octave++) {
+                for (let i = 0; i < notes.length; i++) {
+                    const noteName = notes[i];
+                    const noteWithOctave = `${noteName}${octave}`;
+                    
+                    if (octave === endOctave && notes.indexOf(noteName) > notes.indexOf(endNote)) {
+                        break;
+                    }
+                    
+                    // 白鍵を作成
+                    const keyDiv = document.createElement('div');
+                    keyDiv.className = `key white-key relative`;
+                    keyDiv.dataset.note = noteWithOctave;
+
+                    const labelDiv = document.createElement('div');
+                    labelDiv.className = `note-label`;
+                    labelDiv.textContent = noteWithOctave;
+                    keyDiv.appendChild(labelDiv);
+                    
+                    keyboard.appendChild(keyDiv);
+                    
+                    // シャープ付きの黒鍵を配置
+                    const sharpNoteWithOctave = `${noteName}#${octave}`;
+                    
+                    if (allowedSharps.includes(noteWithOctave)) {
+                        const blackKeyDiv = document.createElement('div');
+                        blackKeyDiv.className = `key black-key`;
+                        blackKeyDiv.dataset.note = sharpNoteWithOctave;
+
+                        const blackKeyLabel = document.createElement('div');
+                        blackKeyLabel.className = 'note-label';
+                        blackKeyLabel.textContent = sharpNoteWithOctave;
+                        blackKeyDiv.appendChild(blackKeyLabel);
+                        
+                        // 黒鍵を白鍵の親要素に追加
+                        keyDiv.appendChild(blackKeyDiv);
+                        
+                        // 黒鍵のCSS位置を調整
+                        // 親要素（白鍵）を基準に位置を調整
+                        blackKeyDiv.style.left = '20px';
+                    }
+                }
+            }
+        }
+
+        // 鍵盤イベントリスナー
+        function addKeyListeners() {
+            const keys = document.querySelectorAll('.key');
+
+            keys.forEach(key => {
+                key.addEventListener('click', (event) => {
+                    // クリックされた要素が黒鍵の場合、イベントの伝播を停止
+                    if (event.target.closest('.black-key')) {
+                        event.stopPropagation();
+                    }
+                    
+                    const clickedKey = event.target.closest('.key');
+                    if (clickedKey && clickedKey.dataset.note) {
+                        const note = clickedKey.dataset.note;
+                        currentNotes.push(note.replace('♯', '#'));
+                        output.textContent = generateScoreText();
+                        clickedKey.classList.add('active');
+                        setTimeout(() => clickedKey.classList.remove('active'), 100);
+                    }
+                });
+            });
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            createKeyboard();
+            addKeyListeners();
+        });
+
+        // ボタンイベント
+        copyButton.addEventListener('click', () => {
+            const text = output.textContent;
+            if (text.length > 0) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showMessage('楽譜をコピーしました！');
+                }).catch(err => {
+                    console.error('コピーに失敗しました:', err);
+                    showMessage('コピーに失敗しました。');
+                });
+            } else {
+                showMessage('コピーする楽譜がありません。');
+            }
+        });
+
+        downloadButton.addEventListener('click', () => {
+            const text = output.textContent;
+            if (text.length > 0) {
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'my_score.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMessage('楽譜をダウンロードしました！');
+            } else {
+                showMessage('ダウンロードする楽譜がありません。');
+            }
+        });
+
+        clearButton.addEventListener('click', () => {
+            currentNotes = [];
+            output.textContent = '';
+            showMessage('楽譜をクリアしました。');
+        });
+    </script>
+</body>
+</html>
