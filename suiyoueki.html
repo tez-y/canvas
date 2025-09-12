@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水溶液暗記アプリ　帝塚山小学校</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #1e293b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            max-width: 90%;
+            width: 700px;
+            padding: 2.5rem;
+            text-align: center;
+        }
+        .progress-bar {
+            height: 1rem;
+            background-color: #e2e8f0;
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2563eb, #1d4ed8);
+            transition: width 0.5s ease-in-out;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+            max-width: 400px;
+            transform: scale(0.95);
+            transition: transform 0.3s ease-in-out;
+        }
+        .modal.open .modal-content {
+            transform: scale(1);
+        }
+        .review-item {
+            background-color: #f8fafc;
+            border-left: 4px solid #ef4444;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+            text-align: left;
+        }
+        .review-question {
+            font-weight: bold;
+            color: #334155;
+        }
+        .review-answer {
+            color: #16a34a;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="container mx-auto p-8 bg-white rounded-3xl shadow-xl">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">水溶液の性質 暗記アプリ 帝塚山小学校</h1>
+
+        <!-- 記憶度ゲージ -->
+        <div id="gauge-section" class="mb-8">
+            <h2 class="text-xl font-semibold mb-2 text-gray-700">現在の記憶度</h2>
+            <div class="progress-bar">
+                <div id="memory-gauge" class="progress-fill" style="width: 0%;"></div>
+            </div>
+            <p id="memory-text" class="text-lg mt-2 font-medium text-gray-600">0%</p>
+        </div>
+
+        <!-- クイズエリア -->
+        <div id="quiz-area" class="space-y-6">
+            <p id="question-text" class="text-xl font-semibold mb-4 text-gray-800">問題</p>
+            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- 選択肢ボタン -->
+            </div>
+            <div id="feedback-area" class="mt-6">
+                <p id="feedback-text" class="text-lg font-bold"></p>
+                <button id="next-button" class="mt-4 px-6 py-3 bg-blue-600 text-white font-bold rounded-full shadow-lg hover:bg-blue-700 transition transform hover:scale-105 hidden">次の問題へ</button>
+            </div>
+        </div>
+
+        <!-- 復習エリア -->
+        <div id="review-area" class="hidden text-left">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">復習ページ</h2>
+            <p id="review-message" class="text-lg text-gray-600 mb-6"></p>
+            <div id="review-list">
+                <!-- 間違えた問題がここに表示される -->
+            </div>
+            <button id="review-next-button" class="mt-8 px-6 py-3 bg-blue-600 text-white font-bold rounded-full shadow-lg hover:bg-blue-700 transition transform hover:scale-105">次のクイズへ</button>
+        </div>
+    </div>
+
+    <!-- モーダルウィンドウ -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4"></h3>
+            <p id="modal-message" class="text-gray-600 mb-6"></p>
+            <button id="modal-close" class="px-6 py-2 bg-blue-600 text-white font-bold rounded-full shadow-md hover:bg-blue-700 transition">閉じる</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // 問題データ
+        const questions = [
+            // 液性に関する問題
+            { type: "single", text: "「塩酸」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["酸性"] },
+            { type: "single", text: "「酢」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["酸性"] },
+            { type: "single", text: "「炭酸水」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["酸性"] },
+            { type: "single", text: "「ほう酸水」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["酸性"] },
+            { type: "single", text: "「うすい過酸化水素水」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["酸性"] },
+            { type: "single", text: "「食塩水」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["中性"] },
+            { type: "single", text: "「砂糖水」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["中性"] },
+            { type: "single", text: "「アルコール」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["中性"] },
+            { type: "single", text: "「石灰水」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["アルカリ性"] },
+            { type: "single", text: "「重そう水」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["アルカリ性"] },
+            { type: "single", text: "「アンモニア水」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["アルカリ性"] },
+            { type: "single", text: "「水酸化ナトリウム水溶液」の液性は？", options: ["酸性", "中性", "アルカリ性"], correct: ["アルカリ性"] },
+
+            // 溶けているものの状態に関する問題
+            { type: "single", text: "「塩酸」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["気体"] },
+            { type: "single", text: "「食酢」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["液体"] },
+            { type: "single", text: "「炭酸水」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["気体"] },
+            { type: "single", text: "「ほう酸水」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["固体"] },
+            { type: "single", text: "「うすい過酸化水素水」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["液体"] },
+            { type: "single", text: "「食塩水」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["固体"] },
+            { type: "single", text: "「砂糖水」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["固体"] },
+            { type: "single", text: "「アルコール」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["液体"] },
+            { type: "single", text: "「石灰水」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["固体"] },
+            { type: "single", text: "「重そう水」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["固体"] },
+            { type: "single", text: "「アンモニア水」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["気体"] },
+            { type: "single", text: "「水酸化ナトリウム水溶液」に溶けている物質の状態は？", options: ["固体", "液体", "気体"], correct: ["固体"] },
+
+            // その他の特徴に関する問題（既存の問題）
+            { type: "single", text: "蒸発させると白い固体が残る水溶液に溶けているものは？", options: ["固体", "液体", "気体"], correct: ["固体"] },
+            { type: "multi", text: "蒸発させると何も残らない水溶液に溶けているものは？", options: ["固体", "液体", "気体"], correct: ["液体", "気体"] },
+            { type: "multi", text: "「酸性」の水溶液の特徴は？", options: ["赤リトマス紙を赤色のままにする", "青リトマス紙を赤色にする", "BTB液を黄色にする", "石灰水をにごらせる"], correct: ["赤リトマス紙を赤色のままにする", "青リトマス紙を赤色にする", "BTB液を黄色にする"] },
+            { type: "multi", text: "「中性」の水溶液の特徴は？", options: ["赤リトマス紙を赤色のままにする", "青リトマス紙を青色のままにする", "BTB液を緑色にする", "燃える"], correct: ["赤リトマス紙を赤色のままにする", "青リトマス紙を青色のままにする", "BTB液を緑色にする"] },
+            { type: "multi", text: "「アルカリ性」の水溶液の特徴は？", options: ["赤リトマス紙を青色にする", "青リトマス紙を青色のままにする", "BTB液を青色にする", "二酸化炭素でにごる"], correct: ["赤リトマス紙を青色にする", "青リトマス紙を青色のままにする", "BTB液を青色にする"] },
+            { type: "single", text: "「二酸化マンガン」に反応して酸素を発生させる水溶液は？", options: ["塩酸", "うすい過酸化水素水", "石灰水", "アンモニア水"], correct: ["うすい過酸化水素水"] },
+            { type: "single", text: "「石灰水」を入れるとにごる水溶液は？", options: ["ほう酸水", "炭酸水", "重そう水", "水酸化ナトリウム水溶液"], correct: ["炭酸水"] },
+            { type: "multi", text: "「アルミニウム」をとかして水素を発生させる水溶液は？", options: ["塩酸", "石灰水", "水酸化ナトリウム水溶液"], correct: ["塩酸","水酸化ナトリウム水溶液"] },
+            { type: "single", text: "「アルコール」の性質は？", options: ["蒸発させると黒くこげる", "燃える", "鉄・アルミをとかす"], correct: ["燃える"] },
+        ];
+
+        // 記憶度追跡のための状態
+        let memoryData = {};
+        let currentQuestionIndex = -1;
+        let selectedOptions = [];
+        let startTime = 0;
+        let shuffledQuestionIndices = [];
+        let quizCount = 0;
+        let incorrectAnswers = [];
+
+        // DOM要素
+        const quizArea = document.getElementById('quiz-area');
+        const reviewArea = document.getElementById('review-area');
+        const gaugeSection = document.getElementById('gauge-section');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackText = document.getElementById('feedback-text');
+        const nextButton = document.getElementById('next-button');
+        const memoryGauge = document.getElementById('memory-gauge');
+        const memoryText = document.getElementById('memory-text');
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalClose = document.getElementById('modal-close');
+        const reviewList = document.getElementById('review-list');
+        const reviewMessage = document.getElementById('review-message');
+        const reviewNextButton = document.getElementById('review-next-button');
+
+        // 配列をシャッフルするヘルパー関数
+        const shuffleArray = array => {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        };
+
+        // 次の問題のインデックスを取得（シャッフルされた順序を使用）
+        const getNextQuestionIndex = () => {
+            if (shuffledQuestionIndices.length === 0) {
+                shuffledQuestionIndices = Array.from(questions.keys()); 
+                shuffleArray(shuffledQuestionIndices);
+                console.log("問題の順番をシャッフルしました。");
+            }
+            return shuffledQuestionIndices.shift();
+        };
+
+        // 記憶度を更新
+        const updateMemory = (isCorrect, timeTaken) => {
+            const index = currentQuestionIndex;
+            const data = memoryData[index] || { memory: 0, lastReviewed: 0, correctCount: 0, incorrectCount: 0, totalTime: 0 };
+            
+            let memoryChange;
+            if (isCorrect) {
+                const speedBonus = (20 - timeTaken) / 20 * 0.1;
+                memoryChange = 0.1 + Math.max(0, speedBonus);
+            } else {
+                memoryChange = -0.2;
+                incorrectAnswers.push(questions[index]);
+            }
+            
+            let newMemory = data.memory + memoryChange;
+            newMemory = Math.max(0, Math.min(1, newMemory));
+
+            data.memory = newMemory;
+            data.lastReviewed = Date.now();
+            if (isCorrect) {
+                data.correctCount++;
+            } else {
+                data.incorrectCount++;
+            }
+            data.totalTime += timeTaken;
+            memoryData[index] = data;
+
+            updateMemoryGauge();
+            saveData();
+        };
+
+        // ゲージの表示を更新
+        const updateMemoryGauge = () => {
+            const totalMemory = Object.values(memoryData).reduce((sum, data) => sum + data.memory, 0);
+            const averageMemory = questions.length > 0 ? (totalMemory / questions.length) : 0;
+            const percentage = Math.round(averageMemory * 100);
+            memoryGauge.style.width = `${percentage}%`;
+            memoryText.textContent = `${percentage}%`;
+        };
+
+        // 問題を表示
+        const showQuestion = (index) => {
+            currentQuestionIndex = index;
+            const question = questions[index];
+            questionText.textContent = question.text;
+            optionsContainer.innerHTML = '';
+            feedbackText.textContent = '';
+            nextButton.classList.add('hidden');
+            selectedOptions = [];
+            startTime = Date.now();
+
+            const isMulti = question.type === 'multi';
+            const shuffledOptions = [...question.options];
+            shuffleArray(shuffledOptions);
+
+            shuffledOptions.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.className = `w-full px-6 py-4 rounded-xl text-lg font-medium text-gray-800 bg-gray-200 hover:bg-gray-300 transition transform hover:scale-105 shadow-md`;
+                if (isMulti) {
+                    button.classList.add('multi-select');
+                }
+                button.dataset.option = option;
+                optionsContainer.appendChild(button);
+            });
+            optionsContainer.addEventListener('click', handleOptionClick, { once: true });
+        };
+
+        const handleOptionClick = (event) => {
+            if (event.target.tagName !== 'BUTTON') return;
+            const clickedButton = event.target;
+            const question = questions[currentQuestionIndex];
+            const isMulti = question.type === 'multi';
+
+            if (isMulti) {
+                if (selectedOptions.includes(clickedButton.dataset.option)) {
+                    selectedOptions = selectedOptions.filter(o => o !== clickedButton.dataset.option);
+                    clickedButton.classList.remove('bg-blue-500', 'text-white');
+                    clickedButton.classList.add('bg-gray-200', 'text-gray-800');
+                } else {
+                    selectedOptions.push(clickedButton.dataset.option);
+                    clickedButton.classList.add('bg-blue-500', 'text-white');
+                    clickedButton.classList.remove('bg-gray-200', 'text-gray-800');
+                }
+                if (document.getElementById('submit-button')) return;
+                const submitButton = document.createElement('button');
+                submitButton.id = 'submit-button';
+                submitButton.textContent = '決定';
+                submitButton.className = 'mt-4 px-6 py-3 bg-green-600 text-white font-bold rounded-full shadow-lg hover:bg-green-700 transition transform hover:scale-105';
+                optionsContainer.parentElement.appendChild(submitButton);
+                submitButton.addEventListener('click', () => {
+                    checkAnswer(question.correct, selectedOptions);
+                    submitButton.remove();
+                });
+                optionsContainer.addEventListener('click', handleOptionClick, { once: false });
+            } else {
+                checkAnswer(question.correct, [clickedButton.dataset.option]);
+            }
+        };
+
+        // 回答の正誤判定
+        const checkAnswer = (correctAnswers, userAnswers) => {
+            const timeTaken = (Date.now() - startTime) / 1000;
+            const isCorrect = correctAnswers.sort().toString() === userAnswers.sort().toString();
+            
+            if (isCorrect) {
+                feedbackText.textContent = "正解です！";
+                feedbackText.className = "text-green-600 font-bold text-lg mt-4";
+            } else {
+                feedbackText.textContent = "残念、不正解です。";
+                feedbackText.className = "text-red-600 font-bold text-lg mt-4";
+            }
+            nextButton.classList.remove('hidden');
+
+            updateMemory(isCorrect, timeTaken);
+
+            const buttons = document.querySelectorAll('#options-container button');
+            buttons.forEach(button => {
+                const option = button.dataset.option;
+                if (correctAnswers.includes(option)) {
+                    button.classList.add('bg-green-500', 'text-white');
+                } else if (userAnswers.includes(option) && !correctAnswers.includes(option)) {
+                    button.classList.add('bg-red-500', 'text-white');
+                }
+                button.disabled = true;
+                button.classList.remove('hover:scale-105');
+            });
+            nextButton.removeEventListener('click', initQuiz);
+            nextButton.addEventListener('click', initQuiz);
+        };
+
+        // 復習ページを表示
+        const showReviewPage = () => {
+            quizArea.classList.add('hidden');
+            gaugeSection.classList.add('hidden');
+            reviewArea.classList.remove('hidden');
+            reviewList.innerHTML = '';
+
+            if (incorrectAnswers.length === 0) {
+                reviewMessage.textContent = "10問すべて正解しました！素晴らしい！";
+            } else {
+                reviewMessage.textContent = "間違えた問題を確認しましょう。";
+                incorrectAnswers.forEach(q => {
+                    const reviewItem = document.createElement('div');
+                    reviewItem.className = 'review-item';
+                    
+                    const questionP = document.createElement('p');
+                    questionP.className = 'review-question';
+                    questionP.textContent = `問題: ${q.text}`;
+                    
+                    const answerP = document.createElement('p');
+                    answerP.className = 'review-answer';
+                    answerP.textContent = `正解: ${q.correct.join(', ')}`;
+                    
+                    reviewItem.appendChild(questionP);
+                    reviewItem.appendChild(answerP);
+                    reviewList.appendChild(reviewItem);
+                });
+            }
+            incorrectAnswers = [];
+            reviewNextButton.addEventListener('click', () => {
+                quizArea.classList.remove('hidden');
+                gaugeSection.classList.remove('hidden');
+                reviewArea.classList.add('hidden');
+                initQuiz();
+            }, { once: true });
+        };
+
+        // クイズ開始/再開
+        const initQuiz = () => {
+            if (quizCount >= 10) {
+                showReviewPage();
+                quizCount = 0;
+                return;
+            }
+            const nextIndex = getNextQuestionIndex();
+            showQuestion(nextIndex);
+            updateMemoryGauge();
+            quizCount++;
+        };
+
+        // モーダル表示
+        const showModal = (title, message) => {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modal.classList.add('open');
+        };
+
+        // モーダル非表示
+        modalClose.addEventListener('click', () => {
+            modal.classList.remove('open');
+        });
+        
+        // ローカルストレージからのデータ読み込み
+        const loadData = () => {
+            const storedData = localStorage.getItem('memoryData');
+            if (storedData) {
+                memoryData = JSON.parse(storedData);
+                console.log("Data loaded from localStorage.");
+            } else {
+                console.log("No data found in localStorage. Initializing new data.");
+                memoryData = {};
+            }
+        };
+
+        // ローカルストレージへのデータ保存
+        const saveData = () => {
+            localStorage.setItem('memoryData', JSON.stringify(memoryData));
+            console.log("Data saved to localStorage.");
+        };
+
+        window.onload = () => {
+            loadData();
+            initQuiz();
+        };
+    </script>
+</body>
+</html>
+
