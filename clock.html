@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Nara Digital Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --accent-color: #ff9500;
+            --border-color: #222222;
+            --today-bg: #333333;
+            --item-bg: #1c1c1e;
+            --precip-color: #007aff;
+            --high-temp: #ff453a;
+            --low-temp: #0a84ff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Layout */
+        .left-panel {
+            flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            justify-content: center;
+        }
+
+        /* Analog Clock */
+        .clock-container {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            border: 4px solid var(--text-primary);
+            border-radius: 50%;
+        }
+
+        .clock-face {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom center;
+            border-radius: 4px;
+            background-color: var(--text-primary);
+        }
+
+        .hour-hand { width: 8px; height: 70px; margin-left: -4px; z-index: 3; }
+        .min-hand { width: 5px; height: 100px; margin-left: -2.5px; z-index: 2; }
+        .sec-hand { width: 2px; height: 120px; margin-left: -1px; background-color: var(--accent-color); z-index: 4; }
+
+        .clock-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            background-color: var(--accent-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+
+        .mark {
+            position: absolute;
+            width: 2px;
+            height: 10px;
+            background-color: var(--text-secondary);
+            left: 50%;
+            transform-origin: 0 140px;
+        }
+
+        .mark.major {
+            width: 4px;
+            height: 18px;
+            background-color: var(--text-primary);
+        }
+
+        #digital-date-area {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #digital-date {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        #today-reminder-preview {
+            font-size: 0.9rem;
+            color: var(--accent-color);
+            margin-top: 5px;
+            min-height: 1.2em;
+        }
+
+        /* Weather Section */
+        .weather-card {
+            background-color: #111;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .weather-title {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+
+        .weather-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .weather-col:not(:last-child) {
+            border-right: 1px solid #222;
+        }
+
+        .col-label { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px; }
+        .col-icon { font-size: 1.8rem; margin: 4px 0; }
+        .col-temp-now { font-size: 1.5rem; font-weight: bold; }
+        .col-temp-range { font-size: 0.75rem; display: flex; flex-direction: column; gap: 2px; }
+        .col-precip { font-size: 0.75rem; color: var(--precip-color); font-weight: bold; margin-top: 4px; }
+
+        /* Calendar Section */
+        .calendar-card {
+            background-color: #0a0a0a;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            text-align: center;
+        }
+
+        .calendar-day-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            padding-bottom: 5px;
+        }
+
+        .calendar-cell {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.95rem;
+            border-radius: 6px;
+            position: relative;
+        }
+
+        .calendar-cell.today {
+            background-color: var(--today-bg);
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .calendar-dot {
+            width: 4px;
+            height: 4px;
+            background-color: var(--accent-color);
+            border-radius: 50%;
+            position: absolute;
+            bottom: 4px;
+        }
+
+        .add-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            font-size: 26px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.95);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #1c1c1e;
+            padding: 24px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 450px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .scroll-area { overflow-y: auto; flex: 1; margin: 15px 0; }
+        .input-group { background: #2c2c2e; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+        label { display: block; font-size: 0.8rem; color: var(--text-secondary); margin: 8px 0 2px 4px; }
+
+        input, select {
+            width: 100%;
+            background-color: #3a3a3c;
+            border: none;
+            color: white;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .save-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .reminder-item {
+            background-color: #2c2c2e;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rem-info { display: flex; flex-direction: column; }
+        .rem-text { font-size: 1rem; }
+        .rem-meta { font-size: 0.8rem; color: var(--text-secondary); }
+
+        .del-btn {
+            background: #ff3b30;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="left-panel">
+        <div class="clock-container">
+            <div id="clock-marks" class="clock-face"></div>
+            <div id="hour-hand" class="hand hour-hand"></div>
+            <div id="min-hand" class="hand min-hand"></div>
+            <div id="sec-hand" class="hand sec-hand"></div>
+            <div class="clock-center"></div>
+        </div>
+        <div id="digital-date-area">
+            <p id="digital-date"></p>
+            <div id="today-reminder-preview"></div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="weather-card">
+            <div class="weather-title">
+                <span>奈良市 天気予報</span>
+                <span id="weather-update-time"></span>
+            </div>
+            <div id="weather-display" class="weather-grid">
+                <!-- Weather content injected here -->
+                <div style="grid-column: span 3; text-align: center; padding: 20px;">読み込み中...</div>
+            </div>
+        </div>
+
+        <div class="calendar-card">
+            <div class="calendar-header">
+                <div id="calendar-month-name" style="font-weight: bold; font-size: 1.1rem;"></div>
+                <button class="add-btn" onclick="openModal()">+</button>
+            </div>
+            <div class="calendar-grid" id="calendar-body">
+                <div class="calendar-day-label">日</div>
+                <div class="calendar-day-label">月</div>
+                <div class="calendar-day-label">火</div>
+                <div class="calendar-day-label">水</div>
+                <div class="calendar-day-label">木</div>
+                <div class="calendar-day-label">金</div>
+                <div class="calendar-day-label">土</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="reminder-modal" class="modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="margin:0">リマインダー</h2>
+                <button onclick="closeModal()" style="background:none; border:none; color:var(--accent-color); font-size:1.1rem; font-weight:bold;">完了</button>
+            </div>
+            
+            <div class="scroll-area">
+                <div id="reminder-container-list"></div>
+
+                <div class="input-group">
+                    <h3 style="margin-top:0; font-size:1rem;">新規追加</h3>
+                    <input type="text" id="rem-input-text" placeholder="内容を入力">
+                    
+                    <label>日付 (1回のみの場合有効)</label>
+                    <input type="date" id="rem-input-date">
+                    
+                    <label>時刻</label>
+                    <input type="time" id="rem-input-time">
+                    
+                    <label>頻度</label>
+                    <select id="rem-input-type" onchange="toggleDateInput()">
+                        <option value="once">1回のみ</option>
+                        <option value="1">1日ごと (毎日)</option>
+                        <option value="2">2日ごと</option>
+                        <option value="3">3日ごと</option>
+                        <option value="7">毎週</option>
+                    </select>
+                    
+                    <button class="save-btn" onclick="saveReminder()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="alert-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+    <script>
+        const STORAGE_KEY = 'nara_dashboard_reminders_v3';
+        let reminders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        let lastDateString = "";
+
+        // --- Weather Interpretation ---
+        const weatherCodes = {
+            0: { icon: "☀️", label: "快晴" },
+            1: { icon: "🌤️", label: "晴れ" },
+            2: { icon: "⛅", label: "時々曇" },
+            3: { icon: "☁️", label: "曇り" },
+            45: { icon: "🌫️", label: "霧" },
+            48: { icon: "🌫️", label: "霧" },
+            51: { icon: "🌦️", label: "小雨" },
+            53: { icon: "🌦️", label: "小雨" },
+            55: { icon: "🌦️", label: "小雨" },
+            61: { icon: "🌧️", label: "雨" },
+            63: { icon: "🌧️", label: "雨" },
+            65: { icon: "🌧️", label: "激しい雨" },
+            71: { icon: "❄️", label: "雪" },
+            73: { icon: "❄️", label: "雪" },
+            75: { icon: "❄️", label: "強い雪" },
+            80: { icon: "🌦️", label: "にわか雨" },
+            95: { icon: "⛈️", label: "雷雨" }
+        };
+
+        // --- Clock Logic ---
+        function initClock() {
+            const marksContainer = document.getElementById('clock-marks');
+            for (let i = 0; i < 60; i++) {
+                const mark = document.createElement('div');
+                mark.className = i % 5 === 0 ? 'mark major' : 'mark';
+                mark.style.transform = `translateX(-50%) rotate(${i * 6}deg)`;
+                marksContainer.appendChild(mark);
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const s = now.getSeconds();
+            const m = now.getMinutes();
+            const h = now.getHours();
+
+            document.getElementById('sec-hand').style.transform = `rotate(${s * 6}deg)`;
+            document.getElementById('min-hand').style.transform = `rotate(${m * 6 + s * 0.1}deg)`;
+            document.getElementById('hour-hand').style.transform = `rotate(${h * 30 + m * 0.5}deg)`;
+
+            const dateStr = now.toDateString();
+            if (dateStr !== lastDateString) {
+                lastDateString = dateStr;
+                const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
+                document.getElementById('digital-date').innerText = now.toLocaleDateString('ja-JP', options);
+                renderCalendar();
+                updateTodayReminderPreview(now);
+                document.getElementById('rem-input-date').valueAsDate = now;
+            }
+
+            checkReminders(now);
+        }
+
+        // --- Reminder Logic ---
+        function isReminderForDate(rem, targetDate) {
+            const target = new Date(targetDate);
+            target.setHours(0,0,0,0);
+            if (rem.type === 'once') {
+                const scheduled = new Date(rem.scheduledDate);
+                scheduled.setHours(0,0,0,0);
+                return target.getTime() === scheduled.getTime();
+            } else {
+                const start = new Date(rem.id);
+                start.setHours(0,0,0,0);
+                if (target < start) return false;
+                const diffDays = Math.floor((target - start) / (1000 * 60 * 60 * 24));
+                return diffDays % parseInt(rem.type) === 0;
+            }
+        }
+
+        function updateTodayReminderPreview(now) {
+            const previewEl = document.getElementById('today-reminder-preview');
+            const todayRems = reminders.filter(r => isReminderForDate(r, now));
+            if (todayRems.length > 0) {
+                todayRems.sort((a,b) => a.time.localeCompare(b.time));
+                previewEl.innerText = `🔔 ${todayRems[0].time} ${todayRems[0].text}` + (todayRems.length > 1 ? ` (他${todayRems.length - 1}件)` : '');
+            } else {
+                previewEl.innerText = "";
+            }
+        }
+
+        // --- Calendar ---
+        function renderCalendar() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const today = now.getDate();
+            document.getElementById('calendar-month-name').innerText = `${year}年 ${month + 1}月`;
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            const body = document.getElementById('calendar-body');
+            const labels = Array.from(body.querySelectorAll('.calendar-day-label'));
+            body.innerHTML = '';
+            labels.forEach(l => body.appendChild(l));
+            for (let i = 0; i < firstDay; i++) {
+                body.appendChild(document.createElement('div')).className = 'calendar-cell';
+            }
+            for (let d = 1; d <= lastDate; d++) {
+                const cell = document.createElement('div');
+                cell.className = 'calendar-cell';
+                if (d === today) cell.classList.add('today');
+                cell.innerText = d;
+                const cellDate = new Date(year, month, d);
+                if (reminders.some(r => isReminderForDate(r, cellDate))) {
+                    const dot = document.createElement('div');
+                    dot.className = 'calendar-dot';
+                    cell.appendChild(dot);
+                }
+                body.appendChild(cell);
+            }
+        }
+
+        // --- Weather API (improved UI) ---
+        async function fetchWeather() {
+            const display = document.getElementById('weather-display');
+            const updateTime = document.getElementById('weather-update-time');
+            try {
+                // Nara City
+                const url = 'https://api.open-meteo.com/v1/forecast?latitude=34.6851&longitude=135.8048&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo';
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const cur = data.current_weather;
+                const daily = data.daily;
+                
+                const getInfo = (code) => weatherCodes[code] || { icon: "❓", label: "不明" };
+                const curInfo = getInfo(cur.weathercode);
+                const todayInfo = getInfo(daily.weathercode[0]);
+                const tomorrowInfo = getInfo(daily.weathercode[1]);
+
+                display.innerHTML = `
+                    <!-- NOW -->
+                    <div class="weather-col">
+                        <span class="col-label">現在</span>
+                        <div class="col-icon">${curInfo.icon}</div>
+                        <div class="col-temp-now">${cur.temperature}°</div>
+                        <span class="col-label" style="font-size:0.6rem">${curInfo.label}</span>
+                    </div>
+                    <!-- TODAY -->
+                    <div class="weather-col">
+                        <span class="col-label">今日</span>
+                        <div class="col-icon">${todayInfo.icon}</div>
+                        <div class="col-temp-range">
+                            <span style="color:var(--high-temp)">${daily.temperature_2m_max[0]}°</span>
+                            <span style="color:var(--low-temp)">${daily.temperature_2m_min[0]}°</span>
+                        </div>
+                        <div class="col-precip">☔${daily.precipitation_probability_max[0]}%</div>
+                    </div>
+                    <!-- TOMORROW -->
+                    <div class="weather-col">
+                        <span class="col-label">明日</span>
+                        <div class="col-icon">${tomorrowInfo.icon}</div>
+                        <div class="col-temp-range">
+                            <span style="color:var(--high-temp)">${daily.temperature_2m_max[1]}°</span>
+                            <span style="color:var(--low-temp)">${daily.temperature_2m_min[1]}°</span>
+                        </div>
+                        <div class="col-precip">☔${daily.precipitation_probability_max[1]}%</div>
+                    </div>
+                `;
+                updateTime.innerText = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            } catch (error) {
+                display.innerHTML = `<div style="grid-column:span 3;text-align:center;color:#ff3b30">更新エラー</div>`;
+            }
+        }
+
+        // --- UI & Interaction ---
+        function toggleDateInput() {
+            const type = document.getElementById('rem-input-type').value;
+            document.getElementById('rem-input-date').disabled = type !== 'once';
+        }
+        function openModal() { updateRemindersUI(); document.getElementById('reminder-modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('reminder-modal').style.display = 'none'; }
+        function saveReminder() {
+            const text = document.getElementById('rem-input-text').value;
+            const time = document.getElementById('rem-input-time').value;
+            const date = document.getElementById('rem-input-date').value;
+            const type = document.getElementById('rem-input-type').value;
+            if (!text || !time || (type === 'once' && !date)) return;
+            reminders.push({ id: Date.now(), text, time, scheduledDate: date, type, lastTriggered: null });
+            document.getElementById('rem-input-text').value = '';
+            updateRemindersUI();
+            renderCalendar();
+            updateTodayReminderPreview(new Date());
+            closeModal();
+            const audio = document.getElementById('alert-sound');
+            audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(()=>{});
+        }
+        function deleteReminder(id) {
+            reminders = reminders.filter(r => r.id !== id);
+            updateRemindersUI();
+            renderCalendar();
+            updateTodayReminderPreview(new Date());
+        }
+        function updateRemindersUI() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
+            const list = document.getElementById('reminder-container-list');
+            list.innerHTML = reminders.length === 0 ? '<p style="color:#666; text-align:center;">予定はありません</p>' : '';
+            reminders.sort((a,b) => a.time.localeCompare(b.time)).forEach(r => {
+                const item = document.createElement('div');
+                item.className = 'reminder-item';
+                const typeLabels = { 'once': '1回', '1': '毎日', '2': '2日ごと', '3': '3日ごと', '7': '毎週' };
+                item.innerHTML = `
+                    <div class="rem-info">
+                        <span class="rem-text">${r.text}</span>
+                        <span class="rem-meta">${r.time} (${typeLabels[r.type]}${r.type==='once' ? ' '+r.scheduledDate : ''})</span>
+                    </div>
+                    <button class="del-btn" onclick="deleteReminder(${r.id})">削除</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+        function checkReminders(now) {
+            const currentTime = now.toTimeString().substring(0, 5);
+            const todayStr = now.toISOString().split('T')[0];
+            reminders.forEach(r => {
+                if (isReminderForDate(r, now) && r.time === currentTime && r.lastTriggered !== todayStr) {
+                    r.lastTriggered = todayStr;
+                    triggerAlarm(r);
+                    if (r.type === 'once') setTimeout(() => deleteReminder(r.id), 2000);
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
+                }
+            });
+        }
+        function triggerAlarm(rem) {
+            document.getElementById('alert-sound').play();
+            const notification = document.createElement('div');
+            notification.style = "position:fixed; top:20px; left:50%; transform:translateX(-50%); background:var(--accent-color); color:white; padding:20px 40px; border-radius:15px; z-index:1000; box-shadow: 0 10px 40px rgba(0,0,0,0.8); text-align:center; font-weight:bold;";
+            notification.innerHTML = `<span style="font-size:0.9rem">リマインダー</span><br><span style="font-size:1.6rem">${rem.text}</span>`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 20000);
+        }
+
+        window.onload = () => {
+            initClock();
+            updateClock();
+            fetchWeather();
+            updateRemindersUI();
+            setInterval(updateClock, 1000);
+            setInterval(fetchWeather, 1800000); // 30min
+        };
+    </script>
+</body>
+</html>
