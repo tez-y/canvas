@@ -328,7 +328,6 @@
                 <span id="weather-update-time"></span>
             </div>
             <div id="weather-display" class="weather-grid">
-                <!-- Weather content injected here -->
                 <div style="grid-column: span 3; text-align: center; padding: 20px;">読み込み中...</div>
             </div>
         </div>
@@ -365,16 +364,16 @@
                     <h3 style="margin-top:0; font-size:1rem;">新規追加</h3>
                     <input type="text" id="rem-input-text" placeholder="内容を入力">
                     
-                    <label>日付 (1回のみの場合有効)</label>
+                    <label id="rem-date-label">日付 / 開始日</label>
                     <input type="date" id="rem-input-date">
                     
                     <label>時刻</label>
                     <input type="time" id="rem-input-time">
                     
                     <label>頻度</label>
-                    <select id="rem-input-type" onchange="toggleDateInput()">
+                    <select id="rem-input-type">
                         <option value="once">1回のみ</option>
-                        <option value="1">1日ごと (毎日)</option>
+                        <option value="1">毎日</option>
                         <option value="2">2日ごと</option>
                         <option value="3">3日ごと</option>
                         <option value="7">毎週</option>
@@ -389,11 +388,10 @@
     <audio id="alert-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
 
     <script>
-        const STORAGE_KEY = 'nara_dashboard_reminders_v3';
+        const STORAGE_KEY = 'nara_dashboard_reminders_v4';
         let reminders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         let lastDateString = "";
 
-        // --- Weather Interpretation ---
         const weatherCodes = {
             0: { icon: "☀️", label: "快晴" },
             1: { icon: "🌤️", label: "晴れ" },
@@ -414,7 +412,6 @@
             95: { icon: "⛈️", label: "雷雨" }
         };
 
-        // --- Clock Logic ---
         function initClock() {
             const marksContainer = document.getElementById('clock-marks');
             for (let i = 0; i < 60; i++) {
@@ -452,16 +449,20 @@
         function isReminderForDate(rem, targetDate) {
             const target = new Date(targetDate);
             target.setHours(0,0,0,0);
+            
+            // Beginning of calculation: "Start Date"
+            const start = new Date(rem.scheduledDate);
+            start.setHours(0,0,0,0);
+
+            if (target < start) return false;
+
             if (rem.type === 'once') {
-                const scheduled = new Date(rem.scheduledDate);
-                scheduled.setHours(0,0,0,0);
-                return target.getTime() === scheduled.getTime();
+                return target.getTime() === start.getTime();
             } else {
-                const start = new Date(rem.id);
-                start.setHours(0,0,0,0);
-                if (target < start) return false;
-                const diffDays = Math.floor((target - start) / (1000 * 60 * 60 * 24));
-                return diffDays % parseInt(rem.type) === 0;
+                const diffMs = target.getTime() - start.getTime();
+                const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+                const interval = parseInt(rem.type);
+                return diffDays % interval === 0;
             }
         }
 
@@ -476,7 +477,6 @@
             }
         }
 
-        // --- Calendar ---
         function renderCalendar() {
             const now = new Date();
             const year = now.getFullYear();
@@ -507,12 +507,10 @@
             }
         }
 
-        // --- Weather API (improved UI) ---
         async function fetchWeather() {
             const display = document.getElementById('weather-display');
             const updateTime = document.getElementById('weather-update-time');
             try {
-                // Nara City
                 const url = 'https://api.open-meteo.com/v1/forecast?latitude=34.6851&longitude=135.8048&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo';
                 const response = await fetch(url);
                 const data = await response.json();
@@ -526,14 +524,12 @@
                 const tomorrowInfo = getInfo(daily.weathercode[1]);
 
                 display.innerHTML = `
-                    <!-- NOW -->
                     <div class="weather-col">
                         <span class="col-label">現在</span>
                         <div class="col-icon">${curInfo.icon}</div>
                         <div class="col-temp-now">${cur.temperature}°</div>
                         <span class="col-label" style="font-size:0.6rem">${curInfo.label}</span>
                     </div>
-                    <!-- TODAY -->
                     <div class="weather-col">
                         <span class="col-label">今日</span>
                         <div class="col-icon">${todayInfo.icon}</div>
@@ -543,7 +539,6 @@
                         </div>
                         <div class="col-precip">☔${daily.precipitation_probability_max[0]}%</div>
                     </div>
-                    <!-- TOMORROW -->
                     <div class="weather-col">
                         <span class="col-label">明日</span>
                         <div class="col-icon">${tomorrowInfo.icon}</div>
@@ -560,34 +555,46 @@
             }
         }
 
-        // --- UI & Interaction ---
-        function toggleDateInput() {
-            const type = document.getElementById('rem-input-type').value;
-            document.getElementById('rem-input-date').disabled = type !== 'once';
+        function openModal() { 
+            updateRemindersUI(); 
+            document.getElementById('reminder-modal').style.display = 'flex'; 
         }
-        function openModal() { updateRemindersUI(); document.getElementById('reminder-modal').style.display = 'flex'; }
         function closeModal() { document.getElementById('reminder-modal').style.display = 'none'; }
+
         function saveReminder() {
             const text = document.getElementById('rem-input-text').value;
             const time = document.getElementById('rem-input-time').value;
             const date = document.getElementById('rem-input-date').value;
             const type = document.getElementById('rem-input-type').value;
-            if (!text || !time || (type === 'once' && !date)) return;
-            reminders.push({ id: Date.now(), text, time, scheduledDate: date, type, lastTriggered: null });
+
+            if (!text || !time || !date) return;
+
+            reminders.push({ 
+                id: Date.now(), 
+                text, 
+                time, 
+                scheduledDate: date, 
+                type, 
+                lastTriggered: null 
+            });
+
             document.getElementById('rem-input-text').value = '';
             updateRemindersUI();
             renderCalendar();
             updateTodayReminderPreview(new Date());
             closeModal();
+
             const audio = document.getElementById('alert-sound');
             audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(()=>{});
         }
+
         function deleteReminder(id) {
             reminders = reminders.filter(r => r.id !== id);
             updateRemindersUI();
             renderCalendar();
             updateTodayReminderPreview(new Date());
         }
+
         function updateRemindersUI() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
             const list = document.getElementById('reminder-container-list');
@@ -599,13 +606,14 @@
                 item.innerHTML = `
                     <div class="rem-info">
                         <span class="rem-text">${r.text}</span>
-                        <span class="rem-meta">${r.time} (${typeLabels[r.type]}${r.type==='once' ? ' '+r.scheduledDate : ''})</span>
+                        <span class="rem-meta">${r.time} (${typeLabels[r.type]} / 開始:${r.scheduledDate})</span>
                     </div>
                     <button class="del-btn" onclick="deleteReminder(${r.id})">削除</button>
                 `;
                 list.appendChild(item);
             });
         }
+
         function checkReminders(now) {
             const currentTime = now.toTimeString().substring(0, 5);
             const todayStr = now.toISOString().split('T')[0];
@@ -618,6 +626,7 @@
                 }
             });
         }
+
         function triggerAlarm(rem) {
             document.getElementById('alert-sound').play();
             const notification = document.createElement('div');
@@ -633,7 +642,7 @@
             fetchWeather();
             updateRemindersUI();
             setInterval(updateClock, 1000);
-            setInterval(fetchWeather, 1800000); // 30min
+            setInterval(fetchWeather, 1800000);
         };
     </script>
 </body>
